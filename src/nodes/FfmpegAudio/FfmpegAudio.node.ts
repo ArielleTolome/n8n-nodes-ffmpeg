@@ -44,6 +44,7 @@ export class FfmpegAudio implements INodeType {
           { name: 'Normalize (Loudnorm EBU R128)', value: 'loudnorm', description: 'Normalize to EBU R128 standard' },
           { name: 'Adjust Volume', value: 'volume', description: 'Increase or decrease volume' },
           { name: 'Change Speed', value: 'speed', description: 'Speed up or slow down audio (atempo)' },
+          { name: 'Pitch Shift', value: 'pitch', description: 'Shift audio pitch without changing speed (asetrate + atempo)' },
           { name: 'Fade In/Out', value: 'fade', description: 'Fade audio in and/or out' },
           { name: 'Remove Audio from Video', value: 'removeFromVideo', description: 'Strip audio from a video file' },
           { name: 'Remove Silence', value: 'removeSilence', description: 'Strip silent sections from audio (silenceremove)' },
@@ -225,6 +226,17 @@ export class FfmpegAudio implements INodeType {
         displayOptions: { show: { operation: ['fade'] } },
       },
 
+      // ─── PITCH SHIFT ──────────────────────────────────────────────────
+      {
+        displayName: 'Pitch Semitones',
+        name: 'pitchSemitones',
+        type: 'number',
+        typeOptions: { minValue: -24, maxValue: 24 },
+        default: 2,
+        description: 'Semitones to shift pitch. +2 = up 2 semitones, -5 = down 5 semitones. Uses asetrate+atempo trick.',
+        displayOptions: { show: { operation: ['pitch'] } },
+      },
+
       // ─── AUDIO SPEED ──────────────────────────────────────────────────
       {
         displayName: 'Speed Factor',
@@ -388,6 +400,33 @@ export class FfmpegAudio implements INodeType {
           }
           const inputs = resolvedPaths.map(p => `-i "${p}"`).join(' ');
           ffmpegCmd = `-y ${inputs} -filter_complex "amix=inputs=${resolvedPaths.length}:duration=longest:normalize=0" ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'pitch') {
+          const inputAudio = this.getNodeParameter('inputAudio', i) as string;
+          const semitones = this.getNodeParameter('pitchSemitones', i) as number;
+          const bitrate = this.getNodeParameter('audioBitrate', i, '192k') as string;
+          const inputPath = await resolveInput(inputAudio, tmpDir);
+
+          // Pitch shift using asetrate (resample rate) + atempo to correct speed back
+          // ratio = 2^(semitones/12); asetrate changes pitch+speed, atempo corrects speed
+          const ratio = Math.pow(2, semitones / 12);
+          // Get sample rate from file
+          let sampleRate = 44100;
+          try {
+            const { stdout } = await execAsync(`ffprobe -v quiet -select_streams a:0 -show_entries stream=sample_rate -of csv=p=0 "${inputPath}"`);
+            sampleRate = parseInt(stdout.trim(), 10) || 44100;
+          } catch { /* use default */ }
+
+          const newRate = Math.round(sampleRate * ratio);
+          // Build atempo chain to compensate for speed change
+          let speedCompensation = 1 / ratio;
+          const tempos: string[] = [];
+          while (speedCompensation > 2.0) { tempos.push('atempo=2.0'); speedCompensation /= 2.0; }
+          while (speedCompensation < 0.5) { tempos.push('atempo=0.5'); speedCompensation /= 0.5; }
+          tempos.push(`atempo=${speedCompensation.toFixed(6)}`);
+          const atempoChain = tempos.join(',');
+
+          ffmpegCmd = `-y -i "${inputPath}" -af "asetrate=${newRate},aresample=${sampleRate},${atempoChain}" -ab ${bitrate} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'speed') {
           const inputAudio = this.getNodeParameter('inputAudio', i) as string;

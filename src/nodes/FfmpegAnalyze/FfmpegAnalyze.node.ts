@@ -43,10 +43,12 @@ export class FfmpegAnalyze implements INodeType {
           { name: 'Get Metadata', value: 'metadata', description: 'Get full media metadata (codec, fps, resolution, duration, bitrate)' },
           { name: 'Extract Frames', value: 'extractFrames', description: 'Extract frames at interval, timestamp, or range' },
           { name: 'Extract Nth Frame', value: 'extractNthFrame', description: 'Extract every Nth frame' },
+          { name: 'Extract Subtitle Track', value: 'extractSubtitle', description: 'Extract embedded subtitle stream to .srt or .ass file' },
           { name: 'Detect Scene Changes', value: 'sceneDetect', description: 'Detect scene transitions (timestamps)' },
           { name: 'Detect Silence', value: 'silenceDetect', description: 'Find silent sections in audio' },
           { name: 'Get Loudness Stats', value: 'loudnessStats', description: 'EBU R128 loudness analysis' },
           { name: 'Get Waveform Data', value: 'waveformData', description: 'Extract waveform amplitude JSON' },
+          { name: 'Generate Waveform Video', value: 'waveformVideo', description: 'Render audio waveform as a video (showwaves filter)' },
           { name: 'Generate Sprite Sheet', value: 'spriteSheet', description: 'Generate video preview sprite sheet' },
         ],
         default: 'metadata',
@@ -225,6 +227,92 @@ export class FfmpegAnalyze implements INodeType {
         default: '',
         placeholder: '/tmp/sprite.jpg (leave empty for auto)',
         displayOptions: { show: { operation: ['spriteSheet'] } },
+      },
+
+      // ─── EXTRACT SUBTITLE ────────────────────────────────────────────
+      {
+        displayName: 'Subtitle Track Index',
+        name: 'subtitleTrackIndex',
+        type: 'number',
+        default: 0,
+        description: 'Stream index of the subtitle track (0 = first subtitle stream)',
+        displayOptions: { show: { operation: ['extractSubtitle'] } },
+      },
+      {
+        displayName: 'Subtitle Output Format',
+        name: 'subtitleFormat',
+        type: 'options',
+        options: [
+          { name: 'SRT (SubRip)', value: 'srt' },
+          { name: 'ASS/SSA (Advanced SubStation)', value: 'ass' },
+          { name: 'WebVTT', value: 'vtt' },
+        ],
+        default: 'srt',
+        displayOptions: { show: { operation: ['extractSubtitle'] } },
+      },
+      {
+        displayName: 'Subtitle Output Path',
+        name: 'subtitleOutputPath',
+        type: 'string',
+        default: '',
+        placeholder: '/tmp/subtitles.srt (leave empty for auto)',
+        displayOptions: { show: { operation: ['extractSubtitle'] } },
+      },
+
+      // ─── WAVEFORM VIDEO ───────────────────────────────────────────────
+      {
+        displayName: 'Waveform Width',
+        name: 'waveformWidth',
+        type: 'number',
+        default: 1280,
+        description: 'Width of the waveform video in pixels',
+        displayOptions: { show: { operation: ['waveformVideo'] } },
+      },
+      {
+        displayName: 'Waveform Height',
+        name: 'waveformHeight',
+        type: 'number',
+        default: 360,
+        description: 'Height of the waveform video in pixels',
+        displayOptions: { show: { operation: ['waveformVideo'] } },
+      },
+      {
+        displayName: 'Waveform Style',
+        name: 'waveformStyle',
+        type: 'options',
+        options: [
+          { name: 'Point', value: 'point' },
+          { name: 'Line', value: 'line' },
+          { name: 'P2P (Peak to Peak)', value: 'p2p' },
+          { name: 'Centered', value: 'cline' },
+        ],
+        default: 'line',
+        displayOptions: { show: { operation: ['waveformVideo'] } },
+      },
+      {
+        displayName: 'Waveform Color',
+        name: 'waveformColor',
+        type: 'string',
+        default: '#00ff88',
+        placeholder: '#00ff88 or lime',
+        description: 'Color of the waveform line (hex or color name)',
+        displayOptions: { show: { operation: ['waveformVideo'] } },
+      },
+      {
+        displayName: 'Background Color',
+        name: 'waveformBgColor',
+        type: 'string',
+        default: '#000000',
+        description: 'Background color (hex or color name)',
+        displayOptions: { show: { operation: ['waveformVideo'] } },
+      },
+      {
+        displayName: 'Waveform Output Path',
+        name: 'waveformVideoOutputPath',
+        type: 'string',
+        default: '',
+        placeholder: '/tmp/waveform.mp4 (leave empty for auto)',
+        displayOptions: { show: { operation: ['waveformVideo'] } },
       },
 
       {
@@ -562,6 +650,81 @@ export class FfmpegAnalyze implements INodeType {
 
           if (returnBinary && fs.existsSync(spritePath)) {
             const binData = buildBinaryData(spritePath);
+            newItem.binary = {
+              [binaryPropertyName]: {
+                data: binData.data,
+                mimeType: binData.mimeType,
+                fileExtension: binData.fileExtension,
+                fileName: binData.fileName,
+              },
+            };
+          }
+          returnData.push(newItem);
+
+        } else if (operation === 'extractSubtitle') {
+          const trackIndex = this.getNodeParameter('subtitleTrackIndex', i, 0) as number;
+          const subFormat = this.getNodeParameter('subtitleFormat', i, 'srt') as string;
+          let subOutputPath = this.getNodeParameter('subtitleOutputPath', i, '') as string;
+          if (!subOutputPath) subOutputPath = path.join(tmpDir, `subtitles.${subFormat}`);
+
+          // Map stream by subtitle type index
+          await runFfmpeg(`-y -i "${inputPath}" -map 0:s:${trackIndex} "${subOutputPath}"`);
+
+          const newItem: INodeExecutionData = {
+            json: {
+              operation: 'extractSubtitle',
+              trackIndex,
+              format: subFormat,
+              outputPath: subOutputPath,
+              success: true,
+            },
+          };
+
+          if (returnBinary && fs.existsSync(subOutputPath)) {
+            const binData = buildBinaryData(subOutputPath);
+            newItem.binary = {
+              [binaryPropertyName]: {
+                data: binData.data,
+                mimeType: 'text/plain',
+                fileExtension: subFormat,
+                fileName: path.basename(subOutputPath),
+              },
+            };
+          }
+          returnData.push(newItem);
+
+        } else if (operation === 'waveformVideo') {
+          const wfW = this.getNodeParameter('waveformWidth', i, 1280) as number;
+          const wfH = this.getNodeParameter('waveformHeight', i, 360) as number;
+          const wfStyle = this.getNodeParameter('waveformStyle', i, 'line') as string;
+          const wfColor = this.getNodeParameter('waveformColor', i, '#00ff88') as string;
+          const wfBgColor = this.getNodeParameter('waveformBgColor', i, '#000000') as string;
+          let wfOutputPath = this.getNodeParameter('waveformVideoOutputPath', i, '') as string;
+          if (!wfOutputPath) wfOutputPath = path.join(tmpDir, 'waveform.mp4');
+
+          // showwaves filter renders audio waveform as video
+          const showwavesFilter = `showwaves=s=${wfW}x${wfH}:mode=${wfStyle}:colors=${wfColor}`;
+          const bgFilter = `color=${wfBgColor}:s=${wfW}x${wfH}[bg];[bg][0:v]overlay=0:0`;
+          await runFfmpeg(
+            `-y -i "${inputPath}" -filter_complex "[0:a]${showwavesFilter}[waves];color=${wfBgColor}:s=${wfW}x${wfH}[bg];[bg][waves]overlay=0:0[out]" -map "[out]" -vcodec libx264 -pix_fmt yuv420p "${wfOutputPath}"`
+          );
+          void bgFilter; // suppress unused variable
+
+          const newItem: INodeExecutionData = {
+            json: {
+              operation: 'waveformVideo',
+              width: wfW,
+              height: wfH,
+              style: wfStyle,
+              color: wfColor,
+              backgroundColor: wfBgColor,
+              outputPath: wfOutputPath,
+              success: true,
+            },
+          };
+
+          if (returnBinary && fs.existsSync(wfOutputPath)) {
+            const binData = buildBinaryData(wfOutputPath);
             newItem.binary = {
               [binaryPropertyName]: {
                 data: binData.data,

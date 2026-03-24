@@ -116,12 +116,32 @@ describe('FfmpegAudio operations', () => {
   const ops = (opProp as { options?: Array<{ value: string }> })?.options ?? [];
   const opValues = ops.map(o => o.value);
 
-  test('includes new Wave 3 operations', () => {
+  test('includes Wave 3 operations', () => {
     expect(opValues).toContain('speed');
     expect(opValues).toContain('removeSilence');
   });
 
-  test('has at least 8 operations', () => {
-    expect(opValues.length).toBeGreaterThanOrEqual(8);
+  test('includes Wave 5 pitch shift operation', () => {
+    expect(opValues).toContain('pitch');
+  });
+
+  test('has at least 9 operations', () => {
+    expect(opValues.length).toBeGreaterThanOrEqual(9);
+  });
+});
+
+describe('FfmpegAnalyze operations', () => {
+  const node = new FfmpegAnalyze();
+  const opProp = node.description.properties.find(p => p.name === 'operation');
+  const ops = (opProp as { options?: Array<{ value: string }> })?.options ?? [];
+  const opValues = ops.map(o => o.value);
+
+  test('includes Wave 5 new operations', () => {
+    expect(opValues).toContain('extractSubtitle');
+    expect(opValues).toContain('waveformVideo');
+  });
+
+  test('has at least 9 operations', () => {
+    expect(opValues.length).toBeGreaterThanOrEqual(9);
   });
 });

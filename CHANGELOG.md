@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-24
+
+### Added — FFmpeg Analyze (2 new operations)
+- **Extract Subtitle Track**: Extract embedded subtitle streams from video files to `.srt`, `.ass`, or `.vtt` format. Configurable track index for multi-subtitle videos.
+- **Generate Waveform Video**: Render audio waveform as an MP4 video using FFmpeg's `showwaves` filter. Configurable width, height, waveform style (point/line/p2p/centered), waveform color, and background color.
+
+### Added — FFmpeg Audio (1 new operation)
+- **Pitch Shift**: Shift audio pitch in semitones without changing playback speed. Uses the `asetrate + aresample + atempo` technique to achieve true pitch shifting. Supports ±24 semitones. Auto-detects source sample rate.
+
+### Added — npm Publish Prep
+- `.npmignore`: Excludes source files, tests, CI config, and dev files from the npm package. Only `dist/` and `README.md` are published.
+
+### Changed
+- Test suite expanded to 64 tests (added coverage for Wave 5 operations)
+
 ## [0.4.0] - 2026-03-24
 
 ### Added
@@ -71,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MIT License
 - Published to GitHub: https://github.com/ArielleTolome/n8n-nodes-ffmpeg
 
-[Unreleased]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.1.0...v0.2.0

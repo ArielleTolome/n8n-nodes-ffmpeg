@@ -1,0 +1,28 @@
+# Source files — only dist/ is needed
+src/
+tsconfig.json
+jest.config.js
+
+# Development files
+.github/
+.eslintrc.js
+.eslintignore
+*.log
+*.tgz
+
+# Test files
+coverage/
+src/__tests__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
