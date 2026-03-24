@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-24
+
+### Added — FFmpeg Advanced (5 new operations)
+- **Blur Region (Mosaic/Redact)**: Pixelate a rectangular region for face/license plate redaction. Configurable X, Y, W, H, and intensity.
+- **Deinterlace**: Remove interlacing artifacts using the `yadif` filter. Supports all yadif modes (send frame, send field) and parity detection.
+- **Ken Burns / Zoom Pan**: Animated zoom and pan using FFmpeg's `zoompan` filter. Configurable zoom start/end, 7 pan directions, output resolution and FPS.
+- **Time-lapse**: Create time-lapse videos by selecting every Nth frame. Configurable interval and output FPS.
+- **DASH Packaging**: Package video for MPEG-DASH streaming, producing an MPD manifest plus `.m4s` segments. Configurable segment duration, output directory, and manifest name.
+
+### Added — FFmpeg Audio (2 new operations)
+- **Change Speed**: Speed up or slow down audio using chained `atempo` filters. Supports full range 0.125–8× (chains multiple atempo steps for values outside 0.5–2.0).
+- **Remove Silence**: Strip silent sections using `silenceremove` filter. Configurable threshold (dB), minimum silence duration, and edge-preservation option.
+
 ## [0.2.0] - 2026-03-24
 
 ### Fixed
@@ -44,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MIT License
 - Published to GitHub: https://github.com/ArielleTolome/n8n-nodes-ffmpeg
 
-[Unreleased]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/releases/tag/v0.1.0

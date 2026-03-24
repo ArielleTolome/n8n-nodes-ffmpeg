@@ -43,8 +43,10 @@ export class FfmpegAudio implements INodeType {
           { name: 'Convert Format', value: 'convert', description: 'Change audio format/codec' },
           { name: 'Normalize (Loudnorm EBU R128)', value: 'loudnorm', description: 'Normalize to EBU R128 standard' },
           { name: 'Adjust Volume', value: 'volume', description: 'Increase or decrease volume' },
+          { name: 'Change Speed', value: 'speed', description: 'Speed up or slow down audio (atempo)' },
           { name: 'Fade In/Out', value: 'fade', description: 'Fade audio in and/or out' },
           { name: 'Remove Audio from Video', value: 'removeFromVideo', description: 'Strip audio from a video file' },
+          { name: 'Remove Silence', value: 'removeSilence', description: 'Strip silent sections from audio (silenceremove)' },
           { name: 'Mix Audio Tracks', value: 'mix', description: 'Mix multiple audio streams together' },
         ],
         default: 'trim',
@@ -223,6 +225,45 @@ export class FfmpegAudio implements INodeType {
         displayOptions: { show: { operation: ['fade'] } },
       },
 
+      // ─── AUDIO SPEED ──────────────────────────────────────────────────
+      {
+        displayName: 'Speed Factor',
+        name: 'audioSpeedFactor',
+        type: 'number',
+        typeOptions: { minValue: 0.125, maxValue: 8, numberPrecision: 2 },
+        default: 1.5,
+        description: 'Speed multiplier. 2.0 = 2x speed, 0.5 = half speed. Range: 0.125–8.',
+        displayOptions: { show: { operation: ['speed'] } },
+      },
+
+      // ─── REMOVE SILENCE ───────────────────────────────────────────────
+      {
+        displayName: 'Silence Threshold (dB)',
+        name: 'silenceThreshold',
+        type: 'number',
+        typeOptions: { minValue: -100, maxValue: 0 },
+        default: -50,
+        description: 'Audio level below this (in dB) is considered silence. E.g., -50dB.',
+        displayOptions: { show: { operation: ['removeSilence'] } },
+      },
+      {
+        displayName: 'Minimum Silence Duration (seconds)',
+        name: 'silenceMinDuration',
+        type: 'number',
+        typeOptions: { minValue: 0.01, maxValue: 10, numberPrecision: 2 },
+        default: 0.5,
+        description: 'Minimum duration of silence to remove. Shorter gaps are kept.',
+        displayOptions: { show: { operation: ['removeSilence'] } },
+      },
+      {
+        displayName: 'Keep Edges',
+        name: 'silenceKeepEdges',
+        type: 'boolean',
+        default: false,
+        description: 'If true, silence at the beginning and end of the file is preserved',
+        displayOptions: { show: { operation: ['removeSilence'] } },
+      },
+
       // ─── EXTRA ARGS ───────────────────────────────────────────────────
       {
         displayName: 'Extra FFmpeg Arguments',
@@ -347,6 +388,41 @@ export class FfmpegAudio implements INodeType {
           }
           const inputs = resolvedPaths.map(p => `-i "${p}"`).join(' ');
           ffmpegCmd = `-y ${inputs} -filter_complex "amix=inputs=${resolvedPaths.length}:duration=longest:normalize=0" ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'speed') {
+          const inputAudio = this.getNodeParameter('inputAudio', i) as string;
+          const speedFactor = this.getNodeParameter('audioSpeedFactor', i) as number;
+          const bitrate = this.getNodeParameter('audioBitrate', i, '192k') as string;
+          const inputPath = await resolveInput(inputAudio, tmpDir);
+
+          // atempo supports 0.5–2.0; chain filters for values outside range
+          let remaining = speedFactor;
+          const tempos: string[] = [];
+          while (remaining > 2.0) { tempos.push('atempo=2.0'); remaining /= 2.0; }
+          while (remaining < 0.5) { tempos.push('atempo=0.5'); remaining /= 0.5; }
+          tempos.push(`atempo=${remaining.toFixed(6)}`);
+          ffmpegCmd = `-y -i "${inputPath}" -af "${tempos.join(',')}" -ab ${bitrate} ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'removeSilence') {
+          const inputAudio = this.getNodeParameter('inputAudio', i) as string;
+          const threshold = this.getNodeParameter('silenceThreshold', i) as number;
+          const minDuration = this.getNodeParameter('silenceMinDuration', i) as number;
+          const keepEdges = this.getNodeParameter('silenceKeepEdges', i) as boolean;
+          const bitrate = this.getNodeParameter('audioBitrate', i, '192k') as string;
+          const inputPath = await resolveInput(inputAudio, tmpDir);
+
+          // Build silenceremove filter
+          // stop_periods=-1 means remove all silence, not just at start
+          const threshStr = `${threshold}dB`;
+          let silenceFilter: string;
+          if (keepEdges) {
+            // Remove silence only in the middle (between start/end periods)
+            silenceFilter = `silenceremove=stop_periods=-1:stop_duration=${minDuration}:stop_threshold=${threshStr}`;
+          } else {
+            // Remove silence at start, end, and middle
+            silenceFilter = `silenceremove=start_periods=1:start_duration=${minDuration}:start_threshold=${threshStr}:stop_periods=-1:stop_duration=${minDuration}:stop_threshold=${threshStr}`;
+          }
+          ffmpegCmd = `-y -i "${inputPath}" -af "${silenceFilter}" -ab ${bitrate} ${extraArgs} "${outputPath}"`;
 
         } else {
           throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`, { itemIndex: i });

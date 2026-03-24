@@ -38,15 +38,20 @@ export class FfmpegAdvanced implements INodeType {
         noDataExpression: true,
         options: [
           { name: 'Apply LUT (Color Grading)', value: 'lut', description: 'Apply a .cube LUT file for color grading' },
-          { name: 'Blur Video', value: 'blur', description: 'Apply Gaussian blur' },
-          { name: 'Sharpen Video', value: 'sharpen', description: 'Sharpen video with unsharp mask' },
-          { name: 'Denoise Video', value: 'denoise', description: 'Reduce video noise (hqdn3d)' },
-          { name: 'Add Vignette', value: 'vignette', description: 'Add cinematic vignette effect' },
+          { name: 'Blur Region (Mosaic/Redact)', value: 'blurRegion', description: 'Blur a rectangular region (faces, license plates, etc.)' },
+          { name: 'Blur Video', value: 'blur', description: 'Apply Gaussian blur to entire video' },
           { name: 'Chroma Key (Green Screen)', value: 'chromakey', description: 'Remove green/blue screen background' },
-          { name: 'Stabilize Video', value: 'stabilize', description: 'Smooth out camera shake (vidstab)' },
-          { name: 'HLS Segmentation', value: 'hls', description: 'Segment video for HTTP Live Streaming' },
-          { name: 'Draw Shapes / Boxes', value: 'drawbox', description: 'Draw rectangles or boxes on video' },
           { name: 'Color Adjustment', value: 'colorAdjust', description: 'Adjust brightness, contrast, saturation, hue' },
+          { name: 'DASH Packaging', value: 'dash', description: 'Package video for MPEG-DASH streaming (MPD manifest + segments)' },
+          { name: 'Deinterlace', value: 'deinterlace', description: 'Deinterlace interlaced video (yadif filter)' },
+          { name: 'Denoise Video', value: 'denoise', description: 'Reduce video noise (hqdn3d)' },
+          { name: 'Draw Shapes / Boxes', value: 'drawbox', description: 'Draw rectangles or boxes on video' },
+          { name: 'HLS Segmentation', value: 'hls', description: 'Segment video for HTTP Live Streaming' },
+          { name: 'Ken Burns / Zoom Pan', value: 'kenburns', description: 'Animated zoom and pan effect (zoompan filter)' },
+          { name: 'Sharpen Video', value: 'sharpen', description: 'Sharpen video with unsharp mask' },
+          { name: 'Stabilize Video', value: 'stabilize', description: 'Smooth out camera shake (vidstab)' },
+          { name: 'Time-lapse', value: 'timelapse', description: 'Create time-lapse by selecting frames at interval' },
+          { name: 'Add Vignette', value: 'vignette', description: 'Add cinematic vignette effect' },
         ],
         default: 'lut',
       },
@@ -79,7 +84,7 @@ export class FfmpegAdvanced implements INodeType {
           { name: 'MKV', value: 'mkv' },
         ],
         default: 'mp4',
-        displayOptions: { hide: { operation: ['hls'] } },
+        displayOptions: { hide: { operation: ['hls', 'dash'] } },
       },
       {
         displayName: 'Video Codec',
@@ -91,7 +96,7 @@ export class FfmpegAdvanced implements INodeType {
           { name: 'Copy (no re-encode)', value: 'copy' },
         ],
         default: 'libx264',
-        displayOptions: { hide: { operation: ['hls'] } },
+        displayOptions: { hide: { operation: ['hls', 'dash'] } },
       },
       {
         displayName: 'CRF Quality',
@@ -99,14 +104,14 @@ export class FfmpegAdvanced implements INodeType {
         type: 'number',
         typeOptions: { minValue: 0, maxValue: 51 },
         default: 23,
-        displayOptions: { hide: { operation: ['hls'] } },
+        displayOptions: { hide: { operation: ['hls', 'dash'] } },
       },
       {
         displayName: 'Return Binary Data',
         name: 'returnBinary',
         type: 'boolean',
         default: true,
-        displayOptions: { hide: { operation: ['hls', 'stabilize'] } },
+        displayOptions: { hide: { operation: ['hls', 'dash', 'stabilize'] } },
       },
       {
         displayName: 'Binary Property Name',
@@ -368,6 +373,178 @@ export class FfmpegAdvanced implements INodeType {
         displayOptions: { show: { operation: ['colorAdjust'] } },
       },
 
+      // ─── BLUR REGION ─────────────────────────────────────────────────
+      {
+        displayName: 'Region X',
+        name: 'blurRegionX',
+        type: 'string',
+        default: '100',
+        description: 'X position of the region to blur',
+        displayOptions: { show: { operation: ['blurRegion'] } },
+      },
+      {
+        displayName: 'Region Y',
+        name: 'blurRegionY',
+        type: 'string',
+        default: '100',
+        description: 'Y position of the region to blur',
+        displayOptions: { show: { operation: ['blurRegion'] } },
+      },
+      {
+        displayName: 'Region Width',
+        name: 'blurRegionW',
+        type: 'string',
+        default: '200',
+        description: 'Width of the region to blur',
+        displayOptions: { show: { operation: ['blurRegion'] } },
+      },
+      {
+        displayName: 'Region Height',
+        name: 'blurRegionH',
+        type: 'string',
+        default: '100',
+        description: 'Height of the region to blur',
+        displayOptions: { show: { operation: ['blurRegion'] } },
+      },
+      {
+        displayName: 'Blur Intensity',
+        name: 'blurRegionIntensity',
+        type: 'number',
+        typeOptions: { minValue: 1, maxValue: 50 },
+        default: 10,
+        description: 'Pixelation block size (higher = more blurred/pixelated)',
+        displayOptions: { show: { operation: ['blurRegion'] } },
+      },
+
+      // ─── DEINTERLACE ─────────────────────────────────────────────────
+      {
+        displayName: 'Deinterlace Mode',
+        name: 'deinterlaceMode',
+        type: 'options',
+        options: [
+          { name: 'Send Frame (output at input fps)', value: '0' },
+          { name: 'Send Field (output at 2x fps)', value: '1' },
+          { name: 'Send Frame No Top (skip top field)', value: '2' },
+          { name: 'Send Field No Top (skip top field, 2x)', value: '3' },
+        ],
+        default: '0',
+        displayOptions: { show: { operation: ['deinterlace'] } },
+      },
+      {
+        displayName: 'Deinterlace Parity',
+        name: 'deinterlaceParity',
+        type: 'options',
+        options: [
+          { name: 'Auto (detect from stream)', value: '-1' },
+          { name: 'Top Field First', value: '0' },
+          { name: 'Bottom Field First', value: '1' },
+        ],
+        default: '-1',
+        displayOptions: { show: { operation: ['deinterlace'] } },
+      },
+
+      // ─── KEN BURNS ───────────────────────────────────────────────────
+      {
+        displayName: 'Zoom Start',
+        name: 'kbZoomStart',
+        type: 'number',
+        typeOptions: { minValue: 1, maxValue: 3, numberPrecision: 2 },
+        default: 1.0,
+        description: 'Starting zoom level (1.0 = original size)',
+        displayOptions: { show: { operation: ['kenburns'] } },
+      },
+      {
+        displayName: 'Zoom End',
+        name: 'kbZoomEnd',
+        type: 'number',
+        typeOptions: { minValue: 1, maxValue: 3, numberPrecision: 2 },
+        default: 1.5,
+        description: 'Ending zoom level (1.5 = 50% zoom in)',
+        displayOptions: { show: { operation: ['kenburns'] } },
+      },
+      {
+        displayName: 'Pan Direction',
+        name: 'kbPanDirection',
+        type: 'options',
+        options: [
+          { name: 'Center (no pan)', value: 'center' },
+          { name: 'Left to Right', value: 'ltr' },
+          { name: 'Right to Left', value: 'rtl' },
+          { name: 'Top to Bottom', value: 'ttb' },
+          { name: 'Bottom to Top', value: 'btt' },
+          { name: 'Top-Left to Bottom-Right', value: 'tl_br' },
+          { name: 'Bottom-Right to Top-Left', value: 'br_tl' },
+        ],
+        default: 'center',
+        displayOptions: { show: { operation: ['kenburns'] } },
+      },
+      {
+        displayName: 'Output Width',
+        name: 'kbWidth',
+        type: 'number',
+        default: 1920,
+        description: 'Output frame width in pixels',
+        displayOptions: { show: { operation: ['kenburns'] } },
+      },
+      {
+        displayName: 'Output Height',
+        name: 'kbHeight',
+        type: 'number',
+        default: 1080,
+        description: 'Output frame height in pixels',
+        displayOptions: { show: { operation: ['kenburns'] } },
+      },
+      {
+        displayName: 'Output FPS',
+        name: 'kbFps',
+        type: 'number',
+        default: 25,
+        description: 'Frames per second for output',
+        displayOptions: { show: { operation: ['kenburns'] } },
+      },
+
+      // ─── TIME-LAPSE ───────────────────────────────────────────────────
+      {
+        displayName: 'Frame Interval (keep 1 in N frames)',
+        name: 'timelapseInterval',
+        type: 'number',
+        typeOptions: { minValue: 2, maxValue: 1000 },
+        default: 10,
+        description: 'Keep 1 frame every N frames. E.g., 10 = 10x speed, 60 = 60x speed.',
+        displayOptions: { show: { operation: ['timelapse'] } },
+      },
+      {
+        displayName: 'Output FPS',
+        name: 'timelapseFps',
+        type: 'number',
+        default: 30,
+        description: 'Frame rate of the output time-lapse video',
+        displayOptions: { show: { operation: ['timelapse'] } },
+      },
+
+      // ─── DASH ─────────────────────────────────────────────────────────
+      {
+        displayName: 'DASH Segment Duration (seconds)',
+        name: 'dashSegTime',
+        type: 'number',
+        default: 4,
+        displayOptions: { show: { operation: ['dash'] } },
+      },
+      {
+        displayName: 'DASH Output Directory',
+        name: 'dashOutputDir',
+        type: 'string',
+        default: '/tmp/dash',
+        displayOptions: { show: { operation: ['dash'] } },
+      },
+      {
+        displayName: 'DASH Manifest Name',
+        name: 'dashManifestName',
+        type: 'string',
+        default: 'manifest.mpd',
+        displayOptions: { show: { operation: ['dash'] } },
+      },
+
       // ─── EXTRA ARGS ───────────────────────────────────────────────────
       {
         displayName: 'Extra FFmpeg Arguments',
@@ -497,6 +674,59 @@ export class FfmpegAdvanced implements INodeType {
           const hueFilter = hue !== 0 ? `,hue=h=${hue}` : '';
           ffmpegCmd = `-y -i "${inputPath}" -vf "${eqFilter}${hueFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
+        } else if (operation === 'blurRegion') {
+          const rx = this.getNodeParameter('blurRegionX', i) as string;
+          const ry = this.getNodeParameter('blurRegionY', i) as string;
+          const rw = this.getNodeParameter('blurRegionW', i) as string;
+          const rh = this.getNodeParameter('blurRegionH', i) as string;
+          const intensity = this.getNodeParameter('blurRegionIntensity', i) as number;
+          // Pixelate the region: scale down to 1/intensity then back up
+          const blurFilter = `[0:v]crop=${rw}:${rh}:${rx}:${ry},scale=iw/${intensity}:ih/${intensity},scale=${rw}:${rh}:flags=neighbor[blurred];[0:v][blurred]overlay=${rx}:${ry}`;
+          ffmpegCmd = `-y -i "${inputPath}" -filter_complex "${blurFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'deinterlace') {
+          const deMode = this.getNodeParameter('deinterlaceMode', i) as string;
+          const deParity = this.getNodeParameter('deinterlaceParity', i) as string;
+          ffmpegCmd = `-y -i "${inputPath}" -vf "yadif=mode=${deMode}:parity=${deParity}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'kenburns') {
+          const zoomStart = this.getNodeParameter('kbZoomStart', i) as number;
+          const zoomEnd = this.getNodeParameter('kbZoomEnd', i) as number;
+          const panDir = this.getNodeParameter('kbPanDirection', i) as string;
+          const kbW = this.getNodeParameter('kbWidth', i) as number;
+          const kbH = this.getNodeParameter('kbHeight', i) as number;
+          const kbFps = this.getNodeParameter('kbFps', i) as number;
+
+          // Build zoompan x/y expressions based on direction
+          let xExpr = 'iw/2-(iw/zoom/2)';
+          let yExpr = 'ih/2-(ih/zoom/2)';
+          if (panDir === 'ltr') { xExpr = 'on/(in-1)*(iw-iw/zoom)'; yExpr = 'ih/2-(ih/zoom/2)'; }
+          else if (panDir === 'rtl') { xExpr = '(1-on/(in-1))*(iw-iw/zoom)'; yExpr = 'ih/2-(ih/zoom/2)'; }
+          else if (panDir === 'ttb') { xExpr = 'iw/2-(iw/zoom/2)'; yExpr = 'on/(in-1)*(ih-ih/zoom)'; }
+          else if (panDir === 'btt') { xExpr = 'iw/2-(iw/zoom/2)'; yExpr = '(1-on/(in-1))*(ih-ih/zoom)'; }
+          else if (panDir === 'tl_br') { xExpr = 'on/(in-1)*(iw-iw/zoom)'; yExpr = 'on/(in-1)*(ih-ih/zoom)'; }
+          else if (panDir === 'br_tl') { xExpr = '(1-on/(in-1))*(iw-iw/zoom)'; yExpr = '(1-on/(in-1))*(ih-ih/zoom)'; }
+
+          const zoomExpr = `${zoomStart}+on*(${(zoomEnd - zoomStart).toFixed(4)}/in)`;
+          const zoompanFilter = `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=in:s=${kbW}x${kbH}:fps=${kbFps}`;
+          ffmpegCmd = `-y -i "${inputPath}" -vf "${zoompanFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'timelapse') {
+          const interval = this.getNodeParameter('timelapseInterval', i) as number;
+          const tlFps = this.getNodeParameter('timelapseFps', i) as number;
+          // select every Nth frame and set output fps
+          ffmpegCmd = `-y -i "${inputPath}" -vf "select='not(mod(n\\,${interval}))',setpts=N/FRAME_RATE/TB" -r ${tlFps} -an ${vcodecArg} ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'dash') {
+          const dashSegTime = this.getNodeParameter('dashSegTime', i) as number;
+          const dashDir = this.getNodeParameter('dashOutputDir', i) as string;
+          const dashManifest = this.getNodeParameter('dashManifestName', i) as string;
+          fs.mkdirSync(dashDir, { recursive: true });
+          const manifestPath = path.join(dashDir, dashManifest);
+          const segPattern = path.join(dashDir, 'seg_$RepresentationID$_$Number%05d$.m4s');
+          const initPattern = path.join(dashDir, 'init_$RepresentationID$.mp4');
+          ffmpegCmd = `-y -i "${inputPath}" -c:v libx264 -c:a aac -b:a 128k -seg_duration ${dashSegTime} -use_template 1 -use_timeline 1 -init_seg_name "${path.basename(initPattern)}" -media_seg_name "${path.basename(segPattern)}" -adaptation_sets "id=0,streams=v id=1,streams=a" ${extraArgs} -f dash "${manifestPath}"`;
+
         } else {
           throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`, { itemIndex: i });
         }
@@ -512,6 +742,14 @@ export class FfmpegAdvanced implements INodeType {
           const files = fs.readdirSync(hlsDir).map(f => path.join(hlsDir, f));
           newItem.json.hlsDir = hlsDir;
           newItem.json.files = files;
+        } else if (operation === 'dash') {
+          const dashDir = this.getNodeParameter('dashOutputDir', i) as string;
+          const dashManifest = this.getNodeParameter('dashManifestName', i) as string;
+          const files = fs.readdirSync(dashDir).map(f => path.join(dashDir, f));
+          newItem.json.dashDir = dashDir;
+          newItem.json.manifestPath = path.join(dashDir, dashManifest);
+          newItem.json.files = files;
+          newItem.json.segmentCount = files.filter(f => f.endsWith('.m4s')).length;
         } else if (returnBinary && fs.existsSync(outputPath)) {
           const binData = buildBinaryData(outputPath);
           newItem.binary = {
