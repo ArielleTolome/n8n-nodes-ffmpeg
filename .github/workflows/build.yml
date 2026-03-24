@@ -1,0 +1,43 @@
+name: Build & Lint
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & Lint
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript build
+        run: npm run build
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Verify dist artifacts exist
+        run: |
+          test -f dist/nodes/FfmpegVideo/FfmpegVideo.node.js || (echo "Missing FfmpegVideo dist" && exit 1)
+          test -f dist/nodes/FfmpegAudio/FfmpegAudio.node.js || (echo "Missing FfmpegAudio dist" && exit 1)
+          test -f dist/nodes/FfmpegAnalyze/FfmpegAnalyze.node.js || (echo "Missing FfmpegAnalyze dist" && exit 1)
+          test -f dist/nodes/FfmpegAdvanced/FfmpegAdvanced.node.js || (echo "Missing FfmpegAdvanced dist" && exit 1)
+          echo "✅ All dist artifacts present"

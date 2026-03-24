@@ -21,8 +21,28 @@ export async function validateFfmpeg(): Promise<void> {
   try {
     await execAsync('ffmpeg -version');
   } catch {
+    // Try common install paths before giving up
+    const commonPaths = [
+      '/usr/local/bin/ffmpeg',
+      '/usr/bin/ffmpeg',
+      '/opt/homebrew/bin/ffmpeg',
+      '/opt/local/bin/ffmpeg',
+    ];
+    for (const p of commonPaths) {
+      try {
+        await execAsync(`${p} -version`);
+        return; // Found it
+      } catch {
+        // Continue searching
+      }
+    }
     throw new Error(
-      'FFmpeg is not installed or not in PATH. Please install FFmpeg: https://ffmpeg.org/download.html'
+      'FFmpeg is not installed or not in PATH. ' +
+      'Install it with:\n' +
+      '  macOS: brew install ffmpeg\n' +
+      '  Ubuntu/Debian: sudo apt install ffmpeg\n' +
+      '  Windows: https://ffmpeg.org/download.html\n' +
+      'Then ensure ffmpeg is accessible in your system PATH.'
     );
   }
 }
@@ -35,7 +55,10 @@ export async function validateFfprobe(): Promise<void> {
     await execAsync('ffprobe -version');
   } catch {
     throw new Error(
-      'ffprobe is not installed or not in PATH. It should come bundled with FFmpeg.'
+      'ffprobe is not installed or not in PATH. ' +
+      'It should be bundled with FFmpeg. Try reinstalling FFmpeg:\n' +
+      '  macOS: brew install ffmpeg\n' +
+      '  Ubuntu/Debian: sudo apt install ffmpeg'
     );
   }
 }
@@ -96,15 +119,35 @@ export async function downloadToTemp(url: string, tmpDir: string, ext?: string):
  * Resolve input: if URL, download; if path, validate exists. Returns local path.
  */
 export async function resolveInput(input: string, tmpDir: string, ext?: string): Promise<string> {
-  if (input.startsWith('http://') || input.startsWith('https://')) {
-    return downloadToTemp(input, tmpDir, ext);
+  if (!input || input.trim() === '') {
+    throw new Error('Input file path or URL is required but was not provided.');
   }
 
-  if (!fs.existsSync(input)) {
-    throw new Error(`Input file not found: ${input}`);
+  const trimmed = input.trim();
+
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return downloadToTemp(trimmed, tmpDir, ext);
   }
 
-  return input;
+  const resolved = path.resolve(trimmed);
+  if (!fs.existsSync(resolved)) {
+    throw new Error(
+      `Input file not found: "${resolved}". ` +
+      'Please check that the file path is correct and the file exists.'
+    );
+  }
+
+  return resolved;
+}
+
+/**
+ * Validate that required string parameters are non-empty
+ */
+export function requireParam(value: string | undefined | null, paramName: string): string {
+  if (!value || value.trim() === '') {
+    throw new Error(`Required parameter "${paramName}" is missing or empty.`);
+  }
+  return value.trim();
 }
 
 /**
@@ -158,6 +201,32 @@ export function getMimeType(filePath: string): string {
 }
 
 /**
+ * Parse FFmpeg stderr to extract a clean error message
+ */
+function parseFfmpegError(stderr: string): string {
+  if (!stderr) return '';
+  const lines = stderr.split('\n');
+  // Find lines that contain actual errors (not progress/metadata lines)
+  const errorLines = lines.filter(l =>
+    l.includes('Error') ||
+    l.includes('error') ||
+    l.includes('Invalid') ||
+    l.includes('No such file') ||
+    l.includes('Permission denied') ||
+    l.includes('Conversion failed') ||
+    l.includes('Unknown encoder') ||
+    l.includes('Encoder') ||
+    l.includes('not found') ||
+    l.startsWith('Option') && l.includes('not found')
+  );
+  if (errorLines.length > 0) {
+    return errorLines.slice(-5).join('\n').trim();
+  }
+  // Fall back to last 1500 chars of stderr
+  return stderr.slice(-1500).trim();
+}
+
+/**
  * Execute ffmpeg command with proper error handling
  */
 export async function runFfmpeg(args: string): Promise<{ stdout: string; stderr: string }> {
@@ -165,11 +234,39 @@ export async function runFfmpeg(args: string): Promise<{ stdout: string; stderr:
     const result = await execAsync(`ffmpeg ${args}`, { maxBuffer: 100 * 1024 * 1024 });
     return result;
   } catch (error: unknown) {
-    const err = error as { stderr?: string; stdout?: string; message?: string };
+    const err = error as { stderr?: string; code?: number; signal?: string; message?: string };
     const stderr = err.stderr || '';
-    const message = err.message || 'FFmpeg command failed';
-    // FFmpeg writes progress to stderr even on success, so parse the real error
-    throw new Error(`FFmpeg error: ${message}\nFFmpeg output: ${stderr.slice(-2000)}`);
+    const exitCode = err.code;
+
+    // Check for specific common failure modes
+    if (stderr.includes('No such file or directory') || stderr.includes('does not exist')) {
+      const match = stderr.match(/(['"]?)([^'"]+?)\1: No such file or directory/);
+      const filePath = match ? match[2] : 'input file';
+      throw new Error(`FFmpeg input file not found: "${filePath}". Check that the path is correct.`);
+    }
+
+    if (stderr.includes('Unknown encoder') || stderr.includes('Encoder') && stderr.includes('not found')) {
+      const match = stderr.match(/(?:Unknown encoder|Encoder) ['"]?([^'"]+)['"]?/);
+      const codec = match ? match[1] : 'specified codec';
+      throw new Error(
+        `FFmpeg encoder not found: "${codec}". ` +
+        'This codec may not be compiled into your FFmpeg build. ' +
+        'Try a different codec (e.g. libx264 instead of h265).'
+      );
+    }
+
+    if (stderr.includes('Permission denied')) {
+      throw new Error(
+        'FFmpeg permission denied. Check that the output directory exists and is writable.'
+      );
+    }
+
+    const cleanError = parseFfmpegError(stderr);
+    const exitInfo = exitCode !== undefined ? ` (exit code ${exitCode})` : '';
+    throw new Error(
+      `FFmpeg failed${exitInfo}.\n` +
+      (cleanError ? `Details: ${cleanError}` : `Raw output: ${stderr.slice(-1500)}`)
+    );
   }
 }
 
@@ -181,9 +278,12 @@ export async function runFfprobe(args: string): Promise<{ stdout: string; stderr
     const result = await execAsync(`ffprobe ${args}`, { maxBuffer: 50 * 1024 * 1024 });
     return result;
   } catch (error: unknown) {
-    const err = error as { stderr?: string; stdout?: string; message?: string };
-    const message = err.message || 'ffprobe command failed';
-    throw new Error(`ffprobe error: ${message}`);
+    const err = error as { stderr?: string; code?: number; message?: string };
+    const stderr = err.stderr || '';
+    if (stderr.includes('No such file') || stderr.includes('does not exist')) {
+      throw new Error(`ffprobe: Input file not found. Check the file path.`);
+    }
+    throw new Error(`ffprobe failed: ${err.message || 'unknown error'}\n${stderr.slice(-500)}`);
   }
 }
 

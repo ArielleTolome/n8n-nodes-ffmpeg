@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-ffmpeg",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Production-grade n8n community nodes for FFmpeg video/audio processing. More powerful than Fal.ai's FFmpeg API.",
   "keywords": [
     "n8n-community-node-package",
@@ -30,7 +30,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc && npm run copy-icons",
-    "copy-icons": "cp -r src/nodes/FfmpegNode/*.svg dist/nodes/FfmpegNode/ 2>/dev/null || true; cp -r src/nodes/FfmpegAudio/*.svg dist/nodes/FfmpegAudio/ 2>/dev/null || true; cp -r src/nodes/FfmpegAnalyze/*.svg dist/nodes/FfmpegAnalyze/ 2>/dev/null || true",
+    "copy-icons": "cp -r src/nodes/FfmpegVideo/*.svg dist/nodes/FfmpegVideo/ 2>/dev/null || true; cp -r src/nodes/FfmpegAudio/*.svg dist/nodes/FfmpegAudio/ 2>/dev/null || true; cp -r src/nodes/FfmpegAnalyze/*.svg dist/nodes/FfmpegAnalyze/ 2>/dev/null || true; cp -r src/nodes/FfmpegAdvanced/*.svg dist/nodes/FfmpegAdvanced/ 2>/dev/null || true",
     "dev": "tsc --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",

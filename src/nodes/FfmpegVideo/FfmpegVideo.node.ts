@@ -95,7 +95,7 @@ export class FfmpegVideo implements INodeType {
         description: 'Paths or URLs to input videos, one per line',
         displayOptions: {
           show: {
-            operation: ['merge', 'compose'],
+            operation: ['merge', 'compose', 'xfade'],
           },
         },
       },
@@ -842,7 +842,10 @@ export class FfmpegVideo implements INodeType {
 
         // ─── OPERATIONS ────────────────────────────────────────────────
         if (operation === 'trim') {
-          const inputVideo = this.getNodeParameter('inputVideo', i) as string;
+          const inputVideo = this.getNodeParameter('inputVideo', i, '') as string;
+          if (!inputVideo || !inputVideo.trim()) {
+            throw new NodeOperationError(this.getNode(), 'Input Video is required for the Trim operation.', { itemIndex: i });
+          }
           const startTime = this.getNodeParameter('startTime', i) as string;
           const endTime = this.getNodeParameter('endTime', i, '') as string;
           const duration = this.getNodeParameter('duration', i, '') as string;
@@ -854,9 +857,12 @@ export class FfmpegVideo implements INodeType {
           ffmpegCmd = `-y ${ssArg} -i "${inputPath}" ${toArg} ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'merge') {
-          const inputVideosRaw = this.getNodeParameter('inputVideos', i) as string;
+          const inputVideosRaw = this.getNodeParameter('inputVideos', i, '') as string;
+          if (!inputVideosRaw || !inputVideosRaw.trim()) {
+            throw new NodeOperationError(this.getNode(), 'Input Videos is required for Merge. Provide at least 2 video paths or URLs, one per line.', { itemIndex: i });
+          }
           const videoList = inputVideosRaw.split('\n').map(v => v.trim()).filter(Boolean);
-          if (videoList.length < 2) throw new NodeOperationError(this.getNode(), 'Need at least 2 videos to merge', { itemIndex: i });
+          if (videoList.length < 2) throw new NodeOperationError(this.getNode(), 'Need at least 2 videos to merge. Provide paths/URLs one per line.', { itemIndex: i });
 
           const listFile = path.join(tmpDir, 'concat_list.txt');
           const resolvedPaths: string[] = [];
