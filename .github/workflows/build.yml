@@ -34,6 +34,9 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+      - name: Run tests
+        run: npm test
+
       - name: Verify dist artifacts exist
         run: |
           test -f dist/nodes/FfmpegVideo/FfmpegVideo.node.js || (echo "Missing FfmpegVideo dist" && exit 1)

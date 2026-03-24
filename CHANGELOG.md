@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-24
+
+### Added
+- **Test suite**: 61 unit tests across 2 test files (`ffmpeg.utils.test.ts`, `node-descriptions.test.ts`)
+  - Tests for `timeToSeconds`, `getMimeType`, `escapeFilterValue`, `requireParam`, `createTempDir`/`cleanupTempDir`, `resolveInput` validation
+  - Structural sanity tests for all 4 nodes: description fields, properties, operation lists, no duplicate property names
+  - Specific regression tests: xfade `inputVideos` displayOptions fix, Wave 3 new operations presence
+- **Jest infrastructure**: `jest.config.js`, `npm test` and `npm run test:coverage` scripts
+- **CI/CD updated**: `build.yml` now runs `npm test` step after build and lint
+- **README**: Complete rewrite with per-operation documentation, field tables, FFmpeg equivalents, common workflow patterns, and troubleshooting guide
+
+### Changed
+- CI workflow now tests on Node 18 and Node 20 with build + lint + test + artifact verification
+
 ## [0.3.0] - 2026-03-24
 
 ### Added — FFmpeg Advanced (5 new operations)
@@ -57,7 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MIT License
 - Published to GitHub: https://github.com/ArielleTolome/n8n-nodes-ffmpeg
 
-[Unreleased]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ArielleTolome/n8n-nodes-ffmpeg/releases/tag/v0.1.0
