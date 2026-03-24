@@ -1,0 +1,71 @@
+{
+  "name": "n8n-nodes-ffmpeg",
+  "version": "0.1.0",
+  "description": "Production-grade n8n community nodes for FFmpeg video/audio processing. More powerful than Fal.ai's FFmpeg API.",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "ffmpeg",
+    "video",
+    "audio",
+    "video-processing",
+    "audio-processing",
+    "media",
+    "transcoding",
+    "trim",
+    "merge",
+    "convert",
+    "encode"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/ArielleTolome/n8n-nodes-ffmpeg",
+  "author": {
+    "name": "ArielleTolome",
+    "email": "arieltolome@users.noreply.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ArielleTolome/n8n-nodes-ffmpeg.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && npm run copy-icons",
+    "copy-icons": "cp -r src/nodes/FfmpegNode/*.svg dist/nodes/FfmpegNode/ 2>/dev/null || true; cp -r src/nodes/FfmpegAudio/*.svg dist/nodes/FfmpegAudio/ 2>/dev/null || true; cp -r src/nodes/FfmpegAnalyze/*.svg dist/nodes/FfmpegAnalyze/ 2>/dev/null || true",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [],
+    "nodes": [
+      "dist/nodes/FfmpegVideo/FfmpegVideo.node.js",
+      "dist/nodes/FfmpegAudio/FfmpegAudio.node.js",
+      "dist/nodes/FfmpegAnalyze/FfmpegAnalyze.node.js",
+      "dist/nodes/FfmpegAdvanced/FfmpegAdvanced.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "^2.14.0"
+  },
+  "dependencies": {
+    "@types/tmp": "^0.2.0",
+    "axios": "^1.6.0",
+    "tmp": "^0.2.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
