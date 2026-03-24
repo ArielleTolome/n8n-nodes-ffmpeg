@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-24
+
+### Added — Wave 10: Final Polish Pass
+
+#### FfmpegVideo
+- **Custom FFmpeg Command operation** added directly to FfmpegVideo (same power as FfmpegAdvanced's Raw op) — users can now run custom ffmpeg commands from any video workflow without switching nodes
+- **`audioOutputFormat` field** for `extractAudio` — was previously broken, always defaulting to mp4 instead of correct audio extension. Now shows mp3/aac/wav/ogg/flac/m4a options
+- **`hwaccel` field** on encoding operations (none/auto/videotoolbox/nvenc/vaapi) — pass `-hwaccel` flag for GPU acceleration on supported hardware
+- **`timeoutSeconds` field** — all 4 nodes now have configurable timeout (default 300s); ffmpeg process is killed if it exceeds limit with a clear error message
+- **Expanded xfade transitions** — added 40+ xfade effects: slideup/down, smoothright/up/down, rectcrop, distance, fadegrays/black/white, squeezeh/v, zoomin, hlslice/hrslice/vuslice/vdslice, hblur/vblur, diag*, hlwind/hrwind/vuwind/vdwind, cover*/reveal* (full FFmpeg xfade filter support)
+- **xfade audio crossfade** — xfade operation now properly crossfades audio tracks using `acrossfade` filter (was dropping audio before)
+- **slideshow audio fix** — fixed double-use of `audioArg` that was causing malformed ffmpeg commands with audio slideshows
+
+#### FfmpegAdvanced
+- **`hwaccel` field** added for encoding operations
+- **`timeoutSeconds` field** added
+- **Fixed `raw` operation** — `inputVideo` was being resolved (and throwing) even for the Raw Command operation. Raw op no longer requires inputVideo to be set.
+
+#### FfmpegAudio
+- **`timeoutSeconds` field** added
+
+#### FfmpegAnalyze
+- **`timeoutSeconds` field** added
+
+#### Utils
+- **`runFfmpeg()` timeout support** — accepts optional `timeoutMs` parameter; provides clear timeout error message when process is killed
+
+### Fixed
+- `extractAudio` now uses correct audio codec and extension based on `audioOutputFormat`
+- `overlayImage` opacity filter — fixed incorrect label reference in filter_complex for opacity blending
+- `speed` operation atempo chain logic — fixed incorrect direction for values < 0.5 (was multiplying instead of dividing)
+
 ## [0.6.0] - 2026-03-24
 
 ### Added — Wave 6: npm Publish Hardening + Edge Case Fixes

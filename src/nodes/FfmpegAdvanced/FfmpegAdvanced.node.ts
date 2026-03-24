@@ -557,6 +557,38 @@ export class FfmpegAdvanced implements INodeType {
         displayOptions: { hide: { operation: ['raw', 'hls', 'dash'] } },
       },
 
+      // ─── TIMEOUT ──────────────────────────────────────────────────────
+      {
+        displayName: 'Timeout (seconds)',
+        name: 'timeoutSeconds',
+        type: 'number',
+        default: 300,
+        description: 'Maximum time to wait for FFmpeg to complete. Increase for large files.',
+        displayOptions: { hide: { operation: ['raw'] } },
+      },
+
+      // ─── HARDWARE ACCELERATION ────────────────────────────────────────
+      {
+        displayName: 'Hardware Acceleration',
+        name: 'hwaccel',
+        type: 'options',
+        options: [
+          { name: 'None (CPU only)', value: 'none' },
+          { name: 'Auto (let FFmpeg decide)', value: 'auto' },
+          { name: 'VideoToolbox (macOS)', value: 'videotoolbox' },
+          { name: 'NVENC (NVIDIA)', value: 'cuda' },
+          { name: 'VAAPI (Linux)', value: 'vaapi' },
+        ],
+        default: 'none',
+        description: 'Hardware acceleration for encoding. Requires compatible hardware and FFmpeg build.',
+        displayOptions: {
+          show: {
+            operation: ['lut', 'blur', 'sharpen', 'denoise', 'vignette', 'chromakey',
+              'stabilize', 'drawbox', 'colorAdjust', 'blurRegion', 'deinterlace', 'kenburns', 'timelapse'],
+          },
+        },
+      },
+
       // ─── RAW COMMAND ──────────────────────────────────────────────────
       {
         displayName: 'FFmpeg Arguments',
@@ -599,20 +631,23 @@ export class FfmpegAdvanced implements INodeType {
       const tmpDir = createTempDir();
       try {
         const operation = this.getNodeParameter('operation', i) as string;
-        const inputVideo = this.getNodeParameter('inputVideo', i) as string;
         const outputFormat = this.getNodeParameter('outputFormat', i, 'mp4') as string;
         const returnBinary = this.getNodeParameter('returnBinary', i, true) as boolean;
         const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data') as string;
         const extraArgs = this.getNodeParameter('extraArgs', i, '') as string;
         const videoCodec = this.getNodeParameter('videoCodec', i, 'libx264') as string;
         const crf = this.getNodeParameter('crf', i, 23) as number;
+        const hwaccel = this.getNodeParameter('hwaccel', i, 'none') as string;
+        const hwaccelArg = (hwaccel && hwaccel !== 'none') ? `-hwaccel ${hwaccel}` : '';
 
         let outputPath = this.getNodeParameter('outputPath', i, '') as string;
-        if (!outputPath) {
+        if (!outputPath && operation !== 'raw') {
           outputPath = path.join(tmpDir, `output.${outputFormat}`);
         }
 
-        const inputPath = await resolveInput(inputVideo, tmpDir);
+        // Only resolve inputVideo for operations that require it
+        const inputVideo = operation !== 'raw' ? this.getNodeParameter('inputVideo', i, '') as string : '';
+        const inputPath = operation !== 'raw' ? await resolveInput(inputVideo, tmpDir) : '';
         const vcodecArg = videoCodec === 'copy' ? '-vcodec copy' : `-vcodec ${videoCodec} -crf ${crf}`;
 
         let ffmpegCmd = '';
@@ -622,20 +657,20 @@ export class FfmpegAdvanced implements INodeType {
           const strength = this.getNodeParameter('lutStrength', i) as number;
           if (strength < 1.0) {
             // Blend original with LUT-applied
-            ffmpegCmd = `-y -i "${inputPath}" -vf "lut3d='${lutFile}',blend=all_mode=normal:all_opacity=${strength}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+            ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "lut3d='${lutFile}',blend=all_mode=normal:all_opacity=${strength}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
           } else {
-            ffmpegCmd = `-y -i "${inputPath}" -vf "lut3d='${lutFile}'" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+            ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "lut3d='${lutFile}'" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
           }
 
         } else if (operation === 'blur') {
           const sigma = this.getNodeParameter('blurSigma', i) as number;
-          ffmpegCmd = `-y -i "${inputPath}" -vf "gblur=sigma=${sigma}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "gblur=sigma=${sigma}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'sharpen') {
           const lumaX = this.getNodeParameter('sharpenLumaX', i) as number;
           const lumaAmt = this.getNodeParameter('sharpenLumaAmount', i) as number;
           const lumaXOdd = lumaX % 2 === 0 ? lumaX + 1 : lumaX;
-          ffmpegCmd = `-y -i "${inputPath}" -vf "unsharp=${lumaXOdd}:${lumaXOdd}:${lumaAmt}:3:3:0" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "unsharp=${lumaXOdd}:${lumaXOdd}:${lumaAmt}:3:3:0" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'denoise') {
           const strength = this.getNodeParameter('denoiseStrength', i) as string;
@@ -643,13 +678,13 @@ export class FfmpegAdvanced implements INodeType {
           if (strength === 'light') hqdn3dArgs = 'hqdn3d=2:1:2:3';
           else if (strength === 'medium') hqdn3dArgs = 'hqdn3d=4:3:6:4.5';
           else hqdn3dArgs = 'hqdn3d=8:6:12:9';
-          ffmpegCmd = `-y -i "${inputPath}" -vf "${hqdn3dArgs}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "${hqdn3dArgs}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'vignette') {
           const angle = this.getNodeParameter('vignetteAngle', i) as number;
           const mode = this.getNodeParameter('vignetteMode', i) as string;
           const modeVal = mode === 'forward' ? 0 : 1;
-          ffmpegCmd = `-y -i "${inputPath}" -vf "vignette=angle=${angle}:mode=${modeVal}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "vignette=angle=${angle}:mode=${modeVal}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'chromakey') {
           const color = this.getNodeParameter('chromaColor', i) as string;
@@ -696,7 +731,7 @@ export class FfmpegAdvanced implements INodeType {
           const bc = this.getNodeParameter('boxColor', i) as string;
           const bt = this.getNodeParameter('boxThickness', i) as number;
           const thickness = bt === 0 ? 'fill' : String(bt);
-          ffmpegCmd = `-y -i "${inputPath}" -vf "drawbox=x=${bx}:y=${by}:w=${bw}:h=${bh}:color=${bc}:t=${thickness}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "drawbox=x=${bx}:y=${by}:w=${bw}:h=${bh}:color=${bc}:t=${thickness}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'colorAdjust') {
           const brightness = this.getNodeParameter('brightness', i) as number;
@@ -706,7 +741,7 @@ export class FfmpegAdvanced implements INodeType {
           const gamma = this.getNodeParameter('gamma', i) as number;
           const eqFilter = `eq=brightness=${brightness}:contrast=${contrast}:saturation=${saturation}:gamma=${gamma}`;
           const hueFilter = hue !== 0 ? `,hue=h=${hue}` : '';
-          ffmpegCmd = `-y -i "${inputPath}" -vf "${eqFilter}${hueFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "${eqFilter}${hueFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'blurRegion') {
           const rx = this.getNodeParameter('blurRegionX', i) as string;
@@ -716,12 +751,12 @@ export class FfmpegAdvanced implements INodeType {
           const intensity = this.getNodeParameter('blurRegionIntensity', i) as number;
           // Pixelate the region: scale down to 1/intensity then back up
           const blurFilter = `[0:v]crop=${rw}:${rh}:${rx}:${ry},scale=iw/${intensity}:ih/${intensity},scale=${rw}:${rh}:flags=neighbor[blurred];[0:v][blurred]overlay=${rx}:${ry}`;
-          ffmpegCmd = `-y -i "${inputPath}" -filter_complex "${blurFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -filter_complex "${blurFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'deinterlace') {
           const deMode = this.getNodeParameter('deinterlaceMode', i) as string;
           const deParity = this.getNodeParameter('deinterlaceParity', i) as string;
-          ffmpegCmd = `-y -i "${inputPath}" -vf "yadif=mode=${deMode}:parity=${deParity}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "yadif=mode=${deMode}:parity=${deParity}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'kenburns') {
           const zoomStart = this.getNodeParameter('kbZoomStart', i) as number;
@@ -743,13 +778,13 @@ export class FfmpegAdvanced implements INodeType {
 
           const zoomExpr = `${zoomStart}+on*(${(zoomEnd - zoomStart).toFixed(4)}/in)`;
           const zoompanFilter = `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=in:s=${kbW}x${kbH}:fps=${kbFps}`;
-          ffmpegCmd = `-y -i "${inputPath}" -vf "${zoompanFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "${zoompanFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'timelapse') {
           const interval = this.getNodeParameter('timelapseInterval', i) as number;
           const tlFps = this.getNodeParameter('timelapseFps', i) as number;
           // select every Nth frame and set output fps
-          ffmpegCmd = `-y -i "${inputPath}" -vf "select='not(mod(n\\,${interval}))',setpts=N/FRAME_RATE/TB" -r ${tlFps} -an ${vcodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "select='not(mod(n\\,${interval}))',setpts=N/FRAME_RATE/TB" -r ${tlFps} -an ${vcodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'dash') {
           const dashSegTime = this.getNodeParameter('dashSegTime', i) as number;

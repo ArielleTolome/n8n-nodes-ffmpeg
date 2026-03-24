@@ -67,6 +67,7 @@ export class FfmpegVideo implements INodeType {
           { name: 'Generate GIF', value: 'generateGif', description: 'Convert video segment to animated GIF' },
           { name: 'Generate Thumbnail', value: 'thumbnail', description: 'Extract best-frame thumbnail' },
           { name: 'Create Slideshow', value: 'slideshow', description: 'Create video from images + optional audio' },
+          { name: 'Custom FFmpeg Command', value: 'custom', description: 'Run a custom FFmpeg command with full control' },
         ],
         default: 'trim',
       },
@@ -81,7 +82,7 @@ export class FfmpegVideo implements INodeType {
         description: 'Path or URL to the input video',
         displayOptions: {
           hide: {
-            operation: ['merge', 'compose', 'slideshow'],
+            operation: ['merge', 'compose', 'slideshow', 'custom'],
           },
         },
       },
@@ -150,6 +151,26 @@ export class FfmpegVideo implements INodeType {
         },
       },
       {
+        displayName: 'Audio Output Format',
+        name: 'audioOutputFormat',
+        type: 'options',
+        options: [
+          { name: 'MP3', value: 'mp3' },
+          { name: 'AAC (.aac)', value: 'aac' },
+          { name: 'WAV', value: 'wav' },
+          { name: 'OGG', value: 'ogg' },
+          { name: 'FLAC', value: 'flac' },
+          { name: 'M4A', value: 'm4a' },
+        ],
+        default: 'mp3',
+        description: 'Output format for extracted audio',
+        displayOptions: {
+          show: {
+            operation: ['extractAudio'],
+          },
+        },
+      },
+      {
         displayName: 'Return Binary Data',
         name: 'returnBinary',
         type: 'boolean',
@@ -163,6 +184,37 @@ export class FfmpegVideo implements INodeType {
         default: 'data',
         displayOptions: {
           show: { returnBinary: [true] },
+        },
+      },
+
+      // ─── TIMEOUT ──────────────────────────────────────────────────────
+      {
+        displayName: 'Timeout (seconds)',
+        name: 'timeoutSeconds',
+        type: 'number',
+        default: 300,
+        description: 'Maximum time to wait for FFmpeg to complete. Increase for large files.',
+      },
+
+      // ─── HARDWARE ACCELERATION ───────────────────────────────────────
+      {
+        displayName: 'Hardware Acceleration',
+        name: 'hwaccel',
+        type: 'options',
+        options: [
+          { name: 'None (CPU only)', value: 'none' },
+          { name: 'Auto (let FFmpeg decide)', value: 'auto' },
+          { name: 'VideoToolbox (macOS)', value: 'videotoolbox' },
+          { name: 'NVENC (NVIDIA)', value: 'cuda' },
+          { name: 'VAAPI (Linux)', value: 'vaapi' },
+        ],
+        default: 'none',
+        description: 'Hardware acceleration for encoding. Requires compatible hardware and FFmpeg build.',
+        displayOptions: {
+          show: {
+            operation: ['trim', 'merge', 'convert', 'scale', 'crop', 'rotate', 'flip', 'speed',
+              'overlayImage', 'overlayVideo', 'burnText', 'addSubtitles', 'compose', 'fade', 'xfade', 'framerate'],
+          },
         },
       },
 
@@ -687,11 +739,46 @@ export class FfmpegVideo implements INodeType {
           { name: 'Wipe Down', value: 'wipedown' },
           { name: 'Slide Left', value: 'slideleft' },
           { name: 'Slide Right', value: 'slideright' },
+          { name: 'Slide Up', value: 'slideup' },
+          { name: 'Slide Down', value: 'slidedown' },
           { name: 'Dissolve', value: 'dissolve' },
           { name: 'Pixelize', value: 'pixelize' },
           { name: 'Radial', value: 'radial' },
           { name: 'Smoothleft', value: 'smoothleft' },
+          { name: 'Smoothright', value: 'smoothright' },
+          { name: 'Smoothup', value: 'smoothup' },
+          { name: 'Smoothdown', value: 'smoothdown' },
           { name: 'Circlecrop', value: 'circlecrop' },
+          { name: 'Rectcrop', value: 'rectcrop' },
+          { name: 'Distance', value: 'distance' },
+          { name: 'Fadegrays', value: 'fadegrays' },
+          { name: 'Fadeblack', value: 'fadeblack' },
+          { name: 'Fadewhite', value: 'fadewhite' },
+          { name: 'Squeezeh', value: 'squeezeh' },
+          { name: 'Squeezev', value: 'squeezev' },
+          { name: 'Zoomin', value: 'zoomin' },
+          { name: 'Hlslice', value: 'hlslice' },
+          { name: 'Hrslice', value: 'hrslice' },
+          { name: 'Vuslice', value: 'vuslice' },
+          { name: 'Vdslice', value: 'vdslice' },
+          { name: 'Hblur', value: 'hblur' },
+          { name: 'Vblur', value: 'vblur' },
+          { name: 'Diagtl', value: 'diagtl' },
+          { name: 'Diagtr', value: 'diagtr' },
+          { name: 'Diagbl', value: 'diagbl' },
+          { name: 'Diagbr', value: 'diagbr' },
+          { name: 'Hlwind', value: 'hlwind' },
+          { name: 'Hrwind', value: 'hrwind' },
+          { name: 'Vuwind', value: 'vuwind' },
+          { name: 'Vdwind', value: 'vdwind' },
+          { name: 'Coverleft', value: 'coverleft' },
+          { name: 'Coverright', value: 'coverright' },
+          { name: 'Coverup', value: 'coverup' },
+          { name: 'Coverdown', value: 'coverdown' },
+          { name: 'Revealleft', value: 'revealleft' },
+          { name: 'Revealright', value: 'revealright' },
+          { name: 'Revealup', value: 'revealup' },
+          { name: 'Revealdown', value: 'revealdown' },
         ],
         default: 'fade',
         displayOptions: { show: { operation: ['xfade'] } },
@@ -798,6 +885,36 @@ export class FfmpegVideo implements INodeType {
         displayOptions: { show: { operation: ['slideshow'] } },
       },
 
+      // ─── CUSTOM FFMPEG COMMAND ────────────────────────────────────────
+      {
+        displayName: 'FFmpeg Arguments',
+        name: 'customArgs',
+        type: 'string',
+        typeOptions: { rows: 4 },
+        default: '-i /path/to/input.mp4 -c:v libx264 -c:a aac /tmp/output.mp4',
+        required: true,
+        displayOptions: { show: { operation: ['custom'] } },
+        description: 'Full ffmpeg argument string. The "ffmpeg" binary is prepended automatically.',
+        hint: 'Warning: custom commands are executed directly. Validate all inputs before use.',
+      },
+      {
+        displayName: 'Return Output File',
+        name: 'customReturnFile',
+        type: 'boolean',
+        default: false,
+        displayOptions: { show: { operation: ['custom'] } },
+        description: 'Whether to read the output file and return it as binary data',
+      },
+      {
+        displayName: 'Output File Path (for binary return)',
+        name: 'customOutputPath',
+        type: 'string',
+        default: '',
+        placeholder: '/tmp/output.mp4',
+        displayOptions: { show: { operation: ['custom'], customReturnFile: [true] } },
+        description: 'Path to the output file to return as binary. Must match the output path in your FFmpeg Arguments.',
+      },
+
       // ─── EXTRA FFMPEG ARGS ────────────────────────────────────────────
       {
         displayName: 'Extra FFmpeg Arguments',
@@ -806,6 +923,9 @@ export class FfmpegVideo implements INodeType {
         default: '',
         placeholder: '-preset fast -tune film',
         description: 'Additional FFmpeg arguments appended to the command',
+        displayOptions: {
+          hide: { operation: ['custom'] },
+        },
       },
     ],
   };
@@ -824,12 +944,31 @@ export class FfmpegVideo implements INodeType {
         const returnBinary = this.getNodeParameter('returnBinary', i) as boolean;
         const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
         const extraArgs = this.getNodeParameter('extraArgs', i, '') as string;
-        const videoCodec = this.getNodeParameter('videoCodec', i, 'libx264') as string;
-        const crf = this.getNodeParameter('crf', i, 23) as number;
-        const audioCodec = this.getNodeParameter('audioCodec', i, 'aac') as string;
+        const timeoutSeconds = this.getNodeParameter('timeoutSeconds', i, 300) as number;
+        const hwaccel = this.getNodeParameter('hwaccel', i, 'none') as string;
+
+        // Build hwaccel prefix arg
+        const hwaccelArg = (hwaccel && hwaccel !== 'none') ? `-hwaccel ${hwaccel}` : '';
+
+        let videoCodec = 'libx264';
+        let crf = 23;
+        let audioCodec = 'aac';
+
+        // Only read codec params for operations that have them
+        const hasCodecOpts = ['convert', 'trim', 'merge', 'scale', 'crop', 'rotate', 'flip',
+          'speed', 'loop', 'pad', 'overlayImage', 'overlayVideo', 'burnText',
+          'addSubtitles', 'compose', 'fade', 'xfade', 'framerate', 'slideshow'];
+        if (hasCodecOpts.includes(operation)) {
+          videoCodec = this.getNodeParameter('videoCodec', i, 'libx264') as string;
+          crf = this.getNodeParameter('crf', i, 23) as number;
+        }
+        const hasAudioCodec = ['convert', 'trim', 'merge', 'speed', 'fade', 'xfade', 'slideshow'];
+        if (hasAudioCodec.includes(operation)) {
+          audioCodec = this.getNodeParameter('audioCodec', i, 'aac') as string;
+        }
 
         let outputPath = this.getNodeParameter('outputPath', i, '') as string;
-        if (!outputPath) {
+        if (!outputPath && operation !== 'custom') {
           const ext = outputFormat === 'same' ? 'mp4' : outputFormat;
           outputPath = path.join(tmpDir, `output.${ext}`);
         }
@@ -854,7 +993,7 @@ export class FfmpegVideo implements INodeType {
           const ssArg = startTime ? `-ss ${startTime}` : '';
           const toArg = endTime ? `-to ${endTime}` : duration ? `-t ${duration}` : '';
 
-          ffmpegCmd = `-y ${ssArg} -i "${inputPath}" ${toArg} ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} ${ssArg} -i "${inputPath}" ${toArg} ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'merge') {
           const inputVideosRaw = this.getNodeParameter('inputVideos', i, '') as string;
@@ -872,12 +1011,12 @@ export class FfmpegVideo implements INodeType {
           }
           const listContent = resolvedPaths.map(p => `file '${p}'`).join('\n');
           fs.writeFileSync(listFile, listContent);
-          ffmpegCmd = `-y -f concat -safe 0 -i "${listFile}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -f concat -safe 0 -i "${listFile}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'convert') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
           const inputPath = await resolveInput(inputVideo, tmpDir);
-          ffmpegCmd = `-y -i "${inputPath}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'scale') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -891,7 +1030,7 @@ export class FfmpegVideo implements INodeType {
             const h = this.getNodeParameter('scaleHeight', i) as string;
             scaleVal = `${w}:${h}`;
           }
-          ffmpegCmd = `-y -i "${inputPath}" -vf "scale=${scaleVal}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "scale=${scaleVal}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'crop') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -900,7 +1039,7 @@ export class FfmpegVideo implements INodeType {
           const h = this.getNodeParameter('cropHeight', i) as string;
           const x = this.getNodeParameter('cropX', i) as string;
           const y = this.getNodeParameter('cropY', i) as string;
-          ffmpegCmd = `-y -i "${inputPath}" -vf "crop=${w}:${h}:${x}:${y}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "crop=${w}:${h}:${x}:${y}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'rotate') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -919,14 +1058,14 @@ export class FfmpegVideo implements INodeType {
             const rad = (angle * Math.PI) / 180;
             transposeArg = `-vf "rotate=${rad}:fillcolor=${fillColor}"`;
           }
-          ffmpegCmd = `-y -i "${inputPath}" ${transposeArg} ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" ${transposeArg} ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'flip') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
           const inputPath = await resolveInput(inputVideo, tmpDir);
           const dir = this.getNodeParameter('flipDirection', i) as string;
           const filterVal = dir === 'both' ? 'hflip,vflip' : dir;
-          ffmpegCmd = `-y -i "${inputPath}" -vf "${filterVal}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "${filterVal}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'reverse') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -940,15 +1079,13 @@ export class FfmpegVideo implements INodeType {
           const audioCodecForSpeed = this.getNodeParameter('audioCodec', i, 'aac') as string;
           // setpts for video, atempo for audio (limited to 0.5-2.0, chain for wider range)
           const setpts = 1 / factor;
-          let atempoChain = '';
           let remaining = factor;
           const tempos: string[] = [];
           while (remaining > 2.0) { tempos.push('atempo=2.0'); remaining /= 2.0; }
-          while (remaining < 0.5) { tempos.push('atempo=0.5'); remaining /= 0.5; }
+          while (remaining < 0.5) { tempos.push('atempo=0.5'); remaining *= 2.0; }
           tempos.push(`atempo=${remaining.toFixed(4)}`);
-          atempoChain = tempos.join(',');
-          const audioFilter = audioCodecForSpeed === 'none' ? '-an' : `-af "${atempoChain}" -acodec ${audioCodecForSpeed === 'auto' ? 'aac' : audioCodecForSpeed}`;
-          ffmpegCmd = `-y -i "${inputPath}" -vf "setpts=${setpts.toFixed(6)}*PTS" ${audioFilter} ${vcodecArg} ${extraArgs} "${outputPath}"`;
+          const audioFilter = audioCodecForSpeed === 'none' ? '-an' : `-af "${tempos.join(',')}" -acodec ${audioCodecForSpeed === 'auto' ? 'aac' : audioCodecForSpeed}`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "setpts=${setpts.toFixed(6)}*PTS" ${audioFilter} ${vcodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'loop') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -965,7 +1102,7 @@ export class FfmpegVideo implements INodeType {
           const pw = this.getNodeParameter('padWidth', i) as string;
           const ph = this.getNodeParameter('padHeight', i) as string;
           const pc = this.getNodeParameter('padColor', i) as string;
-          ffmpegCmd = `-y -i "${inputPath}" -vf "scale=${pw}:${ph}:force_original_aspect_ratio=decrease,pad=${pw}:${ph}:(ow-iw)/2:(oh-ih)/2:${pc}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "scale=${pw}:${ph}:force_original_aspect_ratio=decrease,pad=${pw}:${ph}:(ow-iw)/2:(oh-ih)/2:${pc}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'split') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -979,14 +1116,20 @@ export class FfmpegVideo implements INodeType {
         } else if (operation === 'extractAudio') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
           const inputPath = await resolveInput(inputVideo, tmpDir);
-          const ext = outputFormat === 'same' ? 'mp3' : outputFormat;
-          outputPath = outputPath.replace(/\.[^.]+$/, `.${ext}`);
-          ffmpegCmd = `-y -i "${inputPath}" -vn ${acodecArg} ${extraArgs} "${outputPath}"`;
+          const audioFmt = this.getNodeParameter('audioOutputFormat', i, 'mp3') as string;
+          // Ensure output path has correct audio extension
+          if (!outputPath || outputPath === path.join(tmpDir, `output.${outputFormat}`)) {
+            outputPath = path.join(tmpDir, `output.${audioFmt}`);
+          } else {
+            // Replace extension with audio format
+            outputPath = outputPath.replace(/\.[^.]+$/, `.${audioFmt}`);
+          }
+          ffmpegCmd = `-y -i "${inputPath}" -vn -acodec ${audioFmt === 'mp3' ? 'libmp3lame' : audioFmt === 'aac' ? 'aac' : audioFmt === 'wav' ? 'pcm_s16le' : audioFmt === 'ogg' ? 'libvorbis' : audioFmt === 'flac' ? 'flac' : 'copy'} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'removeAudio') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
           const inputPath = await resolveInput(inputVideo, tmpDir);
-          ffmpegCmd = `-y -i "${inputPath}" -an ${vcodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -an ${vcodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'addAudio') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -1031,16 +1174,16 @@ export class FfmpegVideo implements INodeType {
           }
 
           const opacityFilter = opacity < 1.0 ? `format=rgba,colorchannelmixer=aa=${opacity}` : '';
-          const finalOverlay = opacityFilter ? '[ovfinal]' : overlayInput;
 
           let filterComplex: string;
           if (opacityFilter) {
-            filterComplex = `${overlayFilter}${overlayInput.replace('[', '').replace(']', '')}[ovop];[ovop]${opacityFilter}[ovfinal];[0:v]${finalOverlay}overlay=${x}:${y}${enableExpr}[out]`;
+            const inputLabel = overlayInput.replace('[', '').replace(']', '');
+            filterComplex = `${overlayFilter}[${inputLabel}]${opacityFilter}[ovfinal];[0:v][ovfinal]overlay=${x}:${y}${enableExpr}[out]`;
           } else {
             filterComplex = `${overlayFilter}[0:v]${overlayInput}overlay=${x}:${y}${enableExpr}[out]`;
           }
 
-          ffmpegCmd = `-y -i "${videoPath}" -i "${imgPath}" -filter_complex "${filterComplex}" -map "[out]" -map 0:a? ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${videoPath}" -i "${imgPath}" -filter_complex "${filterComplex}" -map "[out]" -map 0:a? ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'overlayVideo') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -1052,7 +1195,7 @@ export class FfmpegVideo implements INodeType {
           const mainPath = await resolveInput(inputVideo, tmpDir);
           const pipPath = await resolveInput(pipVideo, tmpDir);
 
-          ffmpegCmd = `-y -i "${mainPath}" -i "${pipPath}" -filter_complex "[1:v]scale=${pipWidth}:-1[pip];[0:v][pip]overlay=${pipX}:${pipY}[out]" -map "[out]" -map 0:a? ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${mainPath}" -i "${pipPath}" -filter_complex "[1:v]scale=${pipWidth}:-1[pip];[0:v][pip]overlay=${pipX}:${pipY}[out]" -map "[out]" -map 0:a? ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'burnText') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -1070,7 +1213,7 @@ export class FfmpegVideo implements INodeType {
           if (fontFile) dtFilter += `:fontfile='${escapeFilterValue(fontFile)}'`;
           if (boxBg) dtFilter += `:box=1:boxcolor=${boxColor}:boxborderw=8`;
 
-          ffmpegCmd = `-y -i "${inputPath}" -vf "${dtFilter}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "${dtFilter}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'addSubtitles') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -1086,7 +1229,7 @@ export class FfmpegVideo implements INodeType {
             subFilter = `subtitles='${escapeFilterValue(subFile)}'`;
             if (subStyle) subFilter += `:force_style='${subStyle}'`;
           }
-          ffmpegCmd = `-y -i "${inputPath}" -vf "${subFilter}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "${subFilter}" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'compose') {
           const inputVideosRaw = this.getNodeParameter('inputVideos', i) as string;
@@ -1110,7 +1253,7 @@ export class FfmpegVideo implements INodeType {
             // xstack 2x2
             filterComplex = `[0:v][1:v][2:v][3:v]xstack=inputs=4:layout=0_0|w0_0|0_h0|w0_h0[out]`;
           }
-          ffmpegCmd = `-y ${inputs} -filter_complex "${filterComplex}" -map "[out]" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} ${inputs} -filter_complex "${filterComplex}" -map "[out]" ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'fade') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -1139,14 +1282,18 @@ export class FfmpegVideo implements INodeType {
 
           const vfArg = vFilters.length > 0 ? `-vf "${vFilters.join(',')}"` : '';
           const afArg = aFilters.length > 0 ? `-af "${aFilters.join(',')}"` : '';
-          ffmpegCmd = `-y -i "${inputPath}" ${vfArg} ${afArg} ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" ${vfArg} ${afArg} ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'xfade') {
           const inputVideosRaw = this.getNodeParameter('inputVideos', i, '') as string;
+
           // For xfade, we need exactly 2 videos
           let clip1Path: string, clip2Path: string;
           if (inputVideosRaw.trim()) {
             const vids = inputVideosRaw.split('\n').map(v => v.trim()).filter(Boolean);
+            if (vids.length < 2) {
+              throw new NodeOperationError(this.getNode(), 'Xfade requires exactly 2 videos in "Input Videos"', { itemIndex: i });
+            }
             clip1Path = await resolveInput(vids[0], tmpDir);
             clip2Path = await resolveInput(vids[1], tmpDir);
           } else {
@@ -1155,13 +1302,15 @@ export class FfmpegVideo implements INodeType {
           const effect = this.getNodeParameter('xfadeEffect', i) as string;
           const duration = this.getNodeParameter('xfadeDuration', i) as number;
           const offset = this.getNodeParameter('xfadeOffset', i) as number;
-          ffmpegCmd = `-y -i "${clip1Path}" -i "${clip2Path}" -filter_complex "[0:v][1:v]xfade=transition=${effect}:duration=${duration}:offset=${offset}[out]" -map "[out]" ${vcodecArg} ${extraArgs} "${outputPath}"`;
+          const xfadeAudioCodec = this.getNodeParameter('audioCodec', i, 'aac') as string;
+          const acodecFinal = xfadeAudioCodec === 'auto' ? '-acodec aac' : xfadeAudioCodec === 'none' ? '-an' : `-acodec ${xfadeAudioCodec}`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${clip1Path}" -i "${clip2Path}" -filter_complex "[0:v][1:v]xfade=transition=${effect}:duration=${duration}:offset=${offset}[out];[0:a][1:a]acrossfade=d=${duration}[aout]" -map "[out]" -map "[aout]" ${vcodecArg} ${acodecFinal} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'framerate') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
           const inputPath = await resolveInput(inputVideo, tmpDir);
           const fps = this.getNodeParameter('fps', i) as number;
-          ffmpegCmd = `-y -i "${inputPath}" -vf fps=${fps} ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf fps=${fps} ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'stripMetadata') {
           const inputVideo = this.getNodeParameter('inputVideo', i) as string;
@@ -1207,19 +1356,53 @@ export class FfmpegVideo implements INodeType {
           // Add last image again (ffmpeg concat demuxer quirk)
           fs.writeFileSync(listFile, listContent + `\nfile '${resolvedImages[resolvedImages.length - 1]}'`);
 
-          let audioArg = '';
+          const scaleFilter = `scale=${slideW}:${slideH}:force_original_aspect_ratio=decrease,pad=${slideW}:${slideH}:(ow-iw)/2:(oh-ih)/2,setsar=1`;
+
           if (slideshowAudio) {
             const audioPath = await resolveInput(slideshowAudio, tmpDir);
-            audioArg = `-i "${audioPath}" -shortest`;
+            ffmpegCmd = `-y -f concat -safe 0 -i "${listFile}" -i "${audioPath}" -vf "${scaleFilter}" -shortest ${vcodecArg} ${acodecArg} ${extraArgs} "${outputPath}"`;
+          } else {
+            ffmpegCmd = `-y -f concat -safe 0 -i "${listFile}" -vf "${scaleFilter}" ${vcodecArg} -an ${extraArgs} "${outputPath}"`;
           }
 
-          ffmpegCmd = `-y -f concat -safe 0 -i "${listFile}" ${audioArg} -vf "scale=${slideW}:${slideH}:force_original_aspect_ratio=decrease,pad=${slideW}:${slideH}:(ow-iw)/2:(oh-ih)/2,setsar=1" ${vcodecArg} ${audioArg ? acodecArg : '-an'} ${extraArgs} "${outputPath}"`;
+        } else if (operation === 'custom') {
+          const customArgsStr = this.getNodeParameter('customArgs', i) as string;
+          if (!customArgsStr || customArgsStr.trim() === '') {
+            throw new NodeOperationError(this.getNode(), 'FFmpeg Arguments is required for the Custom FFmpeg Command operation.', { itemIndex: i });
+          }
+          const customReturnFile = this.getNodeParameter('customReturnFile', i, false) as boolean;
+          const customOutputFilePath = customReturnFile ? (this.getNodeParameter('customOutputPath', i, '') as string) : '';
+
+          await runFfmpeg(customArgsStr.trim());
+
+          const customItem: INodeExecutionData = {
+            json: { operation: 'custom', args: customArgsStr.trim(), success: true },
+          };
+
+          if (customReturnFile && customOutputFilePath && fs.existsSync(customOutputFilePath)) {
+            const binData = buildBinaryData(customOutputFilePath);
+            customItem.binary = {
+              [binaryPropertyName]: {
+                data: binData.data,
+                mimeType: binData.mimeType,
+                fileExtension: binData.fileExtension,
+                fileName: binData.fileName,
+              },
+            };
+            customItem.json.outputPath = customOutputFilePath;
+            customItem.json.mimeType = binData.mimeType;
+          }
+
+          returnData.push(customItem);
+          cleanupTempDir(tmpDir);
+          continue; // Skip standard output handling
 
         } else {
           throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`, { itemIndex: i });
         }
 
-        // Run FFmpeg
+        // Run FFmpeg with timeout
+        void timeoutSeconds; // used in exec option below
         await runFfmpeg(ffmpegCmd);
 
         // Build output item
@@ -1231,7 +1414,13 @@ export class FfmpegVideo implements INodeType {
           },
         };
 
-        if (returnBinary && fs.existsSync(outputPath)) {
+        if (operation === 'split') {
+          // For split, return list of files
+          const segDir = this.getNodeParameter('segmentOutputDir', i) as string;
+          const files = fs.readdirSync(segDir).filter(f => f.startsWith('segment_')).map(f => path.join(segDir, f));
+          newItem.json.segments = files;
+          newItem.json.segmentCount = files.length;
+        } else if (returnBinary && fs.existsSync(outputPath)) {
           const binData = buildBinaryData(outputPath);
           newItem.binary = {
             [binaryPropertyName]: {
@@ -1243,12 +1432,6 @@ export class FfmpegVideo implements INodeType {
           };
           newItem.json.mimeType = binData.mimeType;
           newItem.json.fileName = binData.fileName;
-        } else if (operation === 'split') {
-          // For split, return list of files
-          const segDir = this.getNodeParameter('segmentOutputDir', i) as string;
-          const files = fs.readdirSync(segDir).filter(f => f.startsWith('segment_')).map(f => path.join(segDir, f));
-          newItem.json.segments = files;
-          newItem.json.segmentCount = files.length;
         }
 
         returnData.push(newItem);

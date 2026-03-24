@@ -276,6 +276,15 @@ export class FfmpegAudio implements INodeType {
         displayOptions: { show: { operation: ['removeSilence'] } },
       },
 
+      // ─── TIMEOUT ──────────────────────────────────────────────────────
+      {
+        displayName: 'Timeout (seconds)',
+        name: 'timeoutSeconds',
+        type: 'number',
+        default: 300,
+        description: 'Maximum time to wait for FFmpeg to complete. Increase for large files.',
+      },
+
       // ─── EXTRA ARGS ───────────────────────────────────────────────────
       {
         displayName: 'Extra FFmpeg Arguments',

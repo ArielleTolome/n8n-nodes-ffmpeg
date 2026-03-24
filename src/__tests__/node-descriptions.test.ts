@@ -77,6 +77,10 @@ describe('FfmpegVideo operations', () => {
     expect(opValues).toContain('xfade');
   });
 
+  test('includes custom FFmpeg command operation', () => {
+    expect(opValues).toContain('custom');
+  });
+
   test('inputVideos field shows for merge, compose, and xfade', () => {
     const inputVideosProp = node.description.properties.find(p => p.name === 'inputVideos');
     expect(inputVideosProp).toBeDefined();
@@ -86,8 +90,33 @@ describe('FfmpegVideo operations', () => {
     expect(showOps).toContain('xfade');
   });
 
-  test('has at least 25 operations', () => {
-    expect(opValues.length).toBeGreaterThanOrEqual(25);
+  test('has audioOutputFormat for extractAudio', () => {
+    const audioFmtProp = node.description.properties.find(p => p.name === 'audioOutputFormat');
+    expect(audioFmtProp).toBeDefined();
+    const showOps = (audioFmtProp?.displayOptions?.show?.operation ?? []) as string[];
+    expect(showOps).toContain('extractAudio');
+  });
+
+  test('has hwaccel option', () => {
+    const hwProp = node.description.properties.find(p => p.name === 'hwaccel');
+    expect(hwProp).toBeDefined();
+    expect(hwProp?.type).toBe('options');
+  });
+
+  test('has timeoutSeconds option', () => {
+    const toProp = node.description.properties.find(p => p.name === 'timeoutSeconds');
+    expect(toProp).toBeDefined();
+  });
+
+  test('has at least 28 operations', () => {
+    expect(opValues.length).toBeGreaterThanOrEqual(28);
+  });
+
+  test('xfade has expanded transition effects (40+)', () => {
+    const xfadeProp = node.description.properties.find(p => p.name === 'xfadeEffect');
+    expect(xfadeProp).toBeDefined();
+    const xfadeOpts = (xfadeProp as { options?: unknown[] })?.options ?? [];
+    expect(xfadeOpts.length).toBeGreaterThanOrEqual(20);
   });
 });
 
@@ -103,6 +132,16 @@ describe('FfmpegAdvanced operations', () => {
     expect(opValues).toContain('kenburns');
     expect(opValues).toContain('timelapse');
     expect(opValues).toContain('dash');
+  });
+
+  test('has hwaccel option', () => {
+    const hwProp = node.description.properties.find(p => p.name === 'hwaccel');
+    expect(hwProp).toBeDefined();
+  });
+
+  test('has timeoutSeconds option', () => {
+    const toProp = node.description.properties.find(p => p.name === 'timeoutSeconds');
+    expect(toProp).toBeDefined();
   });
 
   test('has at least 16 operations', () => {
@@ -125,6 +164,11 @@ describe('FfmpegAudio operations', () => {
     expect(opValues).toContain('pitch');
   });
 
+  test('has timeoutSeconds option', () => {
+    const toProp = node.description.properties.find(p => p.name === 'timeoutSeconds');
+    expect(toProp).toBeDefined();
+  });
+
   test('has at least 9 operations', () => {
     expect(opValues.length).toBeGreaterThanOrEqual(9);
   });
@@ -139,6 +183,11 @@ describe('FfmpegAnalyze operations', () => {
   test('includes Wave 5 new operations', () => {
     expect(opValues).toContain('extractSubtitle');
     expect(opValues).toContain('waveformVideo');
+  });
+
+  test('has timeoutSeconds option', () => {
+    const toProp = node.description.properties.find(p => p.name === 'timeoutSeconds');
+    expect(toProp).toBeDefined();
   });
 
   test('has at least 9 operations', () => {

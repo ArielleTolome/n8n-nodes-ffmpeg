@@ -329,6 +329,15 @@ export class FfmpegAnalyze implements INodeType {
         default: 'data',
         displayOptions: { show: { returnBinary: [true] } },
       },
+
+      // ─── TIMEOUT ──────────────────────────────────────────────────────
+      {
+        displayName: 'Timeout (seconds)',
+        name: 'timeoutSeconds',
+        type: 'number',
+        default: 300,
+        description: 'Maximum time to wait for FFmpeg to complete. Increase for large files.',
+      },
     ],
   };
 

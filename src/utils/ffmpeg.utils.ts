@@ -335,15 +335,25 @@ function parseFfmpegError(stderr: string): string {
 /**
  * Execute ffmpeg command with proper error handling.
  * `args` should use quotePath() for any file paths that may contain spaces.
+ * @param args FFmpeg argument string
+ * @param timeoutMs Optional timeout in milliseconds (default: 300000 = 5 minutes)
  */
-export async function runFfmpeg(args: string): Promise<{ stdout: string; stderr: string }> {
+export async function runFfmpeg(args: string, timeoutMs = 300000): Promise<{ stdout: string; stderr: string }> {
   try {
-    const result = await execAsync(`ffmpeg ${args}`, { maxBuffer: 100 * 1024 * 1024 });
+    const result = await execAsync(`ffmpeg ${args}`, { maxBuffer: 100 * 1024 * 1024, timeout: timeoutMs });
     return result;
   } catch (error: unknown) {
-    const err = error as { stderr?: string; code?: number; signal?: string; message?: string };
+    const err = error as { stderr?: string; code?: number; signal?: string; message?: string; killed?: boolean };
     const stderr = err.stderr || '';
     const exitCode = err.code;
+
+    // Check for timeout (killed by signal)
+    if (err.killed || err.signal === 'SIGTERM') {
+      throw new Error(
+        `FFmpeg process timed out after ${Math.round(timeoutMs / 1000)} seconds. ` +
+        'The input file may be too large or corrupt. Increase the Timeout setting or check the input file.'
+      );
+    }
 
     // Check for specific common failure modes
     if (stderr.includes('No such file or directory') || stderr.includes('does not exist')) {
