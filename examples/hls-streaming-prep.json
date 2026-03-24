@@ -1,0 +1,66 @@
+{
+  "name": "HLS Streaming Prep (Convert → HLS Segments)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-001",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "operation": "convert",
+        "inputFile": "/path/to/source.mp4",
+        "outputFormat": "mp4",
+        "videoCodec": "libx264",
+        "audioCodec": "aac",
+        "crf": 23,
+        "preset": "fast"
+      },
+      "id": "transcode-001",
+      "name": "Transcode to H.264/AAC",
+      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "typeVersion": 1,
+      "position": [340, 300]
+    },
+    {
+      "parameters": {
+        "operation": "hls",
+        "inputFile": "={{ $json.filePath }}",
+        "hlsTime": 6,
+        "hlsPlaylistType": "vod",
+        "outputDir": "/output/hls/",
+        "playlistName": "stream.m3u8"
+      },
+      "id": "hls-001",
+      "name": "Generate HLS Segments",
+      "type": "n8n-nodes-ffmpeg.ffmpegAdvanced",
+      "typeVersion": 1,
+      "position": [580, 300]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "list",
+        "path": "/output/hls/"
+      },
+      "id": "list-001",
+      "name": "List HLS Files",
+      "type": "n8n-nodes-base.readBinaryFiles",
+      "typeVersion": 1,
+      "position": [820, 300]
+    }
+  ],
+  "connections": {
+    "Start": { "main": [[{ "node": "Transcode to H.264/AAC", "type": "main", "index": 0 }]] },
+    "Transcode to H.264/AAC": { "main": [[{ "node": "Generate HLS Segments", "type": "main", "index": 0 }]] },
+    "Generate HLS Segments": { "main": [[{ "node": "List HLS Files", "type": "main", "index": 0 }]] }
+  },
+  "settings": {},
+  "meta": {
+    "description": "Prepare a video for HTTP Live Streaming (HLS): transcode to web-compatible H.264/AAC, then segment into 6-second HLS chunks with an M3U8 playlist.",
+    "tags": ["hls", "streaming", "vod", "m3u8", "cdn", "video-delivery"]
+  }
+}

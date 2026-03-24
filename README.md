@@ -1,10 +1,11 @@
 # n8n-nodes-ffmpeg
 
-Production-grade n8n community nodes for FFmpeg video/audio processing. More powerful and feature-rich than Fal.ai's FFmpeg API — **55+ operations** across 4 nodes.
+Production-grade n8n community nodes for FFmpeg video/audio processing. More powerful and feature-rich than Fal.ai's FFmpeg API — **63+ operations** across 4 nodes.
 
 [![Build Status](https://github.com/ArielleTolome/n8n-nodes-ffmpeg/actions/workflows/build.yml/badge.svg)](https://github.com/ArielleTolome/n8n-nodes-ffmpeg/actions)
 [![npm version](https://img.shields.io/npm/v/n8n-nodes-ffmpeg)](https://www.npmjs.com/package/n8n-nodes-ffmpeg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js ≥18](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
 ## Table of Contents
 
@@ -16,7 +17,9 @@ Production-grade n8n community nodes for FFmpeg video/audio processing. More pow
   - [FFmpeg Audio](#ffmpeg-audio)
   - [FFmpeg Analyze](#ffmpeg-analyze)
   - [FFmpeg Advanced](#ffmpeg-advanced)
+- [Workflow Examples](#workflow-examples)
 - [Common Patterns](#common-patterns)
+- [Contributing](#contributing)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -529,13 +532,33 @@ EXECUTIONS_TIMEOUT=3600
 
 ---
 
+---
+
+## Workflow Examples
+
+Real n8n workflow JSON files you can import directly into n8n. Find them in the [`examples/`](examples/) directory.
+
+| Workflow | Description |
+|----------|-------------|
+| [Social Media Video Pipeline](examples/social-media-video-pipeline.json) | Trim → Scale to 1080×1920 → Burn text → Export MP4 for Reels/TikTok |
+| [Podcast Audio Pipeline](examples/podcast-audio-pipeline.json) | Trim → Loudnorm → Fade → Export broadcast-quality MP3 |
+| [Thumbnail Generation](examples/thumbnail-generation.json) | Extract frame → Add watermark → Save as 1280×720 PNG |
+| [Green Screen Removal](examples/green-screen-removal.json) | Chroma key → Composite onto custom background → Export |
+| [HLS Streaming Prep](examples/hls-streaming-prep.json) | Transcode → Segment into HLS 6-second chunks with M3U8 |
+
+**To import:** In n8n, go to *Workflows → Import from File* and select the JSON.
+
+---
+
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/my-operation`
-3. Make your changes in `src/`
-4. Run `npm run build && npm run lint`
-5. Submit a pull request
+See [CONTRIBUTING.md](CONTRIBUTING.md) for a full guide on:
+
+- How to add a new operation
+- How to run and write tests
+- How to build and test locally with n8n
+- Code style rules (TypeScript strict, path quoting)
+- How to submit a pull request
 
 ---
 

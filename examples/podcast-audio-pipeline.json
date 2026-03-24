@@ -1,0 +1,89 @@
+{
+  "name": "Podcast Audio Pipeline (Trim → Normalize → Fade → MP3)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-001",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "operation": "trim",
+        "inputFile": "/path/to/raw-recording.wav",
+        "startTime": "5",
+        "endTime": "3600"
+      },
+      "id": "trim-001",
+      "name": "Trim Intro Silence",
+      "type": "n8n-nodes-ffmpeg.ffmpegAudio",
+      "typeVersion": 1,
+      "position": [340, 300]
+    },
+    {
+      "parameters": {
+        "operation": "loudnorm",
+        "inputFile": "={{ $json.filePath }}",
+        "integratedLoudness": -16,
+        "truePeak": -1.5,
+        "lra": 11
+      },
+      "id": "norm-001",
+      "name": "Loudness Normalize (-16 LUFS)",
+      "type": "n8n-nodes-ffmpeg.ffmpegAudio",
+      "typeVersion": 1,
+      "position": [580, 300]
+    },
+    {
+      "parameters": {
+        "operation": "fade",
+        "inputFile": "={{ $json.filePath }}",
+        "fadeInDuration": "2",
+        "fadeOutDuration": "3"
+      },
+      "id": "fade-001",
+      "name": "Add Fade In/Out",
+      "type": "n8n-nodes-ffmpeg.ffmpegAudio",
+      "typeVersion": 1,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "operation": "convert",
+        "inputFile": "={{ $json.filePath }}",
+        "outputFormat": "mp3",
+        "audioBitrate": "192k",
+        "audioCodec": "libmp3lame"
+      },
+      "id": "export-001",
+      "name": "Export MP3 192kbps",
+      "type": "n8n-nodes-ffmpeg.ffmpegAudio",
+      "typeVersion": 1,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
+        "fileName": "podcast-episode.mp3"
+      },
+      "id": "write-001",
+      "name": "Write MP3 File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Start": { "main": [[{ "node": "Trim Intro Silence", "type": "main", "index": 0 }]] },
+    "Trim Intro Silence": { "main": [[{ "node": "Loudness Normalize (-16 LUFS)", "type": "main", "index": 0 }]] },
+    "Loudness Normalize (-16 LUFS)": { "main": [[{ "node": "Add Fade In/Out", "type": "main", "index": 0 }]] },
+    "Add Fade In/Out": { "main": [[{ "node": "Export MP3 192kbps", "type": "main", "index": 0 }]] },
+    "Export MP3 192kbps": { "main": [[{ "node": "Write MP3 File", "type": "main", "index": 0 }]] }
+  },
+  "settings": {},
+  "meta": {
+    "description": "Full podcast production pipeline: trim silence, loudness-normalize to -16 LUFS (podcast standard), add fade in/out, export as broadcast-quality MP3.",
+    "tags": ["audio", "podcast", "loudnorm", "mp3", "broadcast"]
+  }
+}

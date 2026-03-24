@@ -52,6 +52,7 @@ export class FfmpegAdvanced implements INodeType {
           { name: 'Stabilize Video', value: 'stabilize', description: 'Smooth out camera shake (vidstab)' },
           { name: 'Time-lapse', value: 'timelapse', description: 'Create time-lapse by selecting frames at interval' },
           { name: 'Add Vignette', value: 'vignette', description: 'Add cinematic vignette effect' },
+          { name: 'Raw FFmpeg Command', value: 'raw', description: 'Execute a custom ffmpeg command with full argument control' },
         ],
         default: 'lut',
       },
@@ -551,6 +552,39 @@ export class FfmpegAdvanced implements INodeType {
         name: 'extraArgs',
         type: 'string',
         default: '',
+        placeholder: '-preset fast -tune film',
+        description: 'Additional ffmpeg flags appended to the command',
+        displayOptions: { hide: { operation: ['raw', 'hls', 'dash'] } },
+      },
+
+      // ─── RAW COMMAND ──────────────────────────────────────────────────
+      {
+        displayName: 'FFmpeg Arguments',
+        name: 'rawArgs',
+        type: 'string',
+        typeOptions: { rows: 4 },
+        default: '-i /path/to/input.mp4 -c:v libx264 -c:a aac /tmp/output.mp4',
+        required: true,
+        displayOptions: { show: { operation: ['raw'] } },
+        description: 'Full ffmpeg argument string. The "ffmpeg" binary is prepended automatically. Use absolute paths. Example: -i /in.mp4 -c:v copy -c:a aac /out.mp4',
+        hint: 'Warning: raw commands are executed directly. Validate all inputs before using this operation in production.',
+      },
+      {
+        displayName: 'Return Output File',
+        name: 'rawReturnFile',
+        type: 'boolean',
+        default: false,
+        displayOptions: { show: { operation: ['raw'] } },
+        description: 'Whether to read the output file (specified via -o flag convention: the last argument) and return it as binary data',
+      },
+      {
+        displayName: 'Output File Path (for binary return)',
+        name: 'rawOutputPath',
+        type: 'string',
+        default: '',
+        placeholder: '/tmp/output.mp4',
+        displayOptions: { show: { operation: ['raw'], rawReturnFile: [true] } },
+        description: 'Path to the output file to return as binary data. Must match the output path in your FFmpeg Arguments.',
       },
     ],
   };
@@ -727,6 +761,36 @@ export class FfmpegAdvanced implements INodeType {
           const initPattern = path.join(dashDir, 'init_$RepresentationID$.mp4');
           ffmpegCmd = `-y -i "${inputPath}" -c:v libx264 -c:a aac -b:a 128k -seg_duration ${dashSegTime} -use_template 1 -use_timeline 1 -init_seg_name "${path.basename(initPattern)}" -media_seg_name "${path.basename(segPattern)}" -adaptation_sets "id=0,streams=v id=1,streams=a" ${extraArgs} -f dash "${manifestPath}"`;
 
+        } else if (operation === 'raw') {
+          const rawArgs = this.getNodeParameter('rawArgs', i) as string;
+          if (!rawArgs || rawArgs.trim() === '') {
+            throw new NodeOperationError(this.getNode(), 'FFmpeg Arguments is required for the Raw Command operation.', { itemIndex: i });
+          }
+          const rawReturnFile = this.getNodeParameter('rawReturnFile', i, false) as boolean;
+          const rawOutputPath = rawReturnFile ? (this.getNodeParameter('rawOutputPath', i, '') as string) : '';
+
+          await runFfmpeg(rawArgs.trim());
+
+          const rawItem: INodeExecutionData = {
+            json: { operation: 'raw', args: rawArgs.trim(), success: true },
+          };
+
+          if (rawReturnFile && rawOutputPath && fs.existsSync(rawOutputPath)) {
+            const binData = buildBinaryData(rawOutputPath);
+            rawItem.binary = {
+              data: {
+                data: binData.data,
+                mimeType: binData.mimeType,
+                fileExtension: binData.fileExtension,
+                fileName: binData.fileName,
+              },
+            };
+            rawItem.json.outputPath = rawOutputPath;
+            rawItem.json.mimeType = binData.mimeType;
+          }
+
+          returnData.push(rawItem);
+          continue; // Skip the standard output handling below
         } else {
           throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`, { itemIndex: i });
         }

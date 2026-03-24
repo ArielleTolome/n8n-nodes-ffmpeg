@@ -1,0 +1,78 @@
+{
+  "name": "Thumbnail Generation (Extract Frame → Add Watermark → PNG)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-001",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "operation": "thumbnail",
+        "inputFile": "/path/to/video.mp4",
+        "timestamp": "30",
+        "outputFormat": "png",
+        "width": 1280,
+        "height": 720
+      },
+      "id": "thumb-001",
+      "name": "Extract Frame at 0:30",
+      "type": "n8n-nodes-ffmpeg.ffmpegAnalyze",
+      "typeVersion": 1,
+      "position": [340, 300]
+    },
+    {
+      "parameters": {
+        "operation": "overlay",
+        "inputFile": "={{ $json.filePath }}",
+        "overlayFile": "/path/to/watermark.png",
+        "x": "W-w-20",
+        "y": "H-h-20",
+        "opacity": 0.8
+      },
+      "id": "watermark-001",
+      "name": "Add Watermark (Bottom Right)",
+      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "typeVersion": 1,
+      "position": [580, 300]
+    },
+    {
+      "parameters": {
+        "operation": "scale",
+        "inputFile": "={{ $json.filePath }}",
+        "width": 1280,
+        "height": 720,
+        "scalingMode": "exact"
+      },
+      "id": "scale-001",
+      "name": "Ensure 1280x720",
+      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "typeVersion": 1,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "fileName": "thumbnail.png"
+      },
+      "id": "write-001",
+      "name": "Save Thumbnail PNG",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [1060, 300]
+    }
+  ],
+  "connections": {
+    "Start": { "main": [[{ "node": "Extract Frame at 0:30", "type": "main", "index": 0 }]] },
+    "Extract Frame at 0:30": { "main": [[{ "node": "Add Watermark (Bottom Right)", "type": "main", "index": 0 }]] },
+    "Add Watermark (Bottom Right)": { "main": [[{ "node": "Ensure 1280x720", "type": "main", "index": 0 }]] },
+    "Ensure 1280x720": { "main": [[{ "node": "Save Thumbnail PNG", "type": "main", "index": 0 }]] }
+  },
+  "settings": {},
+  "meta": {
+    "description": "Extract a specific frame from a video, add a watermark logo in the bottom-right corner, and save as a 1280x720 PNG thumbnail.",
+    "tags": ["thumbnail", "watermark", "image", "youtube", "extract-frame"]
+  }
+}

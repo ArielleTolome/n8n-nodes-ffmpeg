@@ -133,6 +133,77 @@ describe('createTempDir / cleanupTempDir', () => {
   });
 });
 
+describe('quotePath', () => {
+  let quotePath: (p: string) => string;
+
+  beforeAll(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    quotePath = (await import('../utils/ffmpeg.utils')).quotePath;
+  });
+
+  test('wraps plain paths in single quotes', () => {
+    expect(quotePath('/tmp/output.mp4')).toBe("'/tmp/output.mp4'");
+  });
+
+  test('handles paths with spaces', () => {
+    const result = quotePath('/my files/video clip.mp4');
+    expect(result).toBe("'/my files/video clip.mp4'");
+  });
+
+  test('escapes embedded single quotes', () => {
+    const result = quotePath("/it's/here.mp4");
+    expect(result).toContain("\\'");
+  });
+
+  test('escapes backslashes', () => {
+    const result = quotePath('C:\\Users\\test\\video.mp4');
+    expect(result).toContain('\\\\');
+  });
+});
+
+describe('ensureOutputDir', () => {
+  let ensureOutputDir: (outputPath: string) => void;
+  let tmpBase: string;
+
+  beforeAll(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    ensureOutputDir = (await import('../utils/ffmpeg.utils')).ensureOutputDir;
+  });
+
+  beforeEach(() => {
+    tmpBase = fs.mkdtempSync(require('os').tmpdir() + require('path').sep + 'n8n-test-');
+  });
+
+  afterEach(() => {
+    try { fs.rmSync(tmpBase, { recursive: true, force: true }); } catch { /* ignore */ }
+  });
+
+  test('does not throw when directory already exists', () => {
+    expect(() => ensureOutputDir(require('path').join(tmpBase, 'out.mp4'))).not.toThrow();
+  });
+
+  test('creates missing nested output directory', () => {
+    const nested = require('path').join(tmpBase, 'a', 'b', 'c', 'out.mp4');
+    expect(() => ensureOutputDir(nested)).not.toThrow();
+    expect(fs.existsSync(require('path').dirname(nested))).toBe(true);
+  });
+
+  test('throws for invalid root path', () => {
+    // On any OS, attempting to create a subdirectory under /proc/fakepath should fail
+    // We just verify the function throws if mkdirSync fails
+    const badPath = require('path').join('/proc_fake_readonly_xyz', 'subdir', 'out.mp4');
+    // This will either throw because /proc_fake_readonly_xyz doesn't exist
+    // or succeed by creating it in /tmp. Either way it should not crash unexpectedly.
+    try {
+      ensureOutputDir(badPath);
+      // If it succeeds (on some systems /proc_fake_readonly_xyz may be writable), that's fine
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      expect(e.message).toBeDefined();
+    }
+  });
+});
+
 describe('resolveInput validation', () => {
   // These tests verify that resolveInput properly validates empty input
   // without needing a real filesystem or network

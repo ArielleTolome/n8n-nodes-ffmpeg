@@ -1,0 +1,95 @@
+{
+  "name": "Social Media Video Pipeline (Trim → Scale → Burn Text → MP4)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-001",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "operation": "trim",
+        "inputFile": "/path/to/source-video.mp4",
+        "startTime": "0",
+        "endTime": "30"
+      },
+      "id": "trim-001",
+      "name": "Trim to 30s",
+      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "typeVersion": 1,
+      "position": [340, 300]
+    },
+    {
+      "parameters": {
+        "operation": "scale",
+        "inputFile": "={{ $json.filePath }}",
+        "width": 1080,
+        "height": 1920,
+        "scalingMode": "fit"
+      },
+      "id": "scale-001",
+      "name": "Scale to 1080x1920 (9:16 Reel)",
+      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "typeVersion": 1,
+      "position": [580, 300]
+    },
+    {
+      "parameters": {
+        "operation": "burnSubtitles",
+        "inputFile": "={{ $json.filePath }}",
+        "text": "Follow for more tips! 🔥",
+        "fontSize": 60,
+        "fontColor": "white",
+        "x": "(w-text_w)/2",
+        "y": "h-200",
+        "startTime": "0",
+        "endTime": "30"
+      },
+      "id": "text-001",
+      "name": "Burn Text Overlay",
+      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "typeVersion": 1,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "operation": "convert",
+        "inputFile": "={{ $json.filePath }}",
+        "outputFormat": "mp4",
+        "videoCodec": "libx264",
+        "audioCodec": "aac",
+        "crf": 23
+      },
+      "id": "export-001",
+      "name": "Export Final MP4",
+      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "typeVersion": 1,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
+        "fileName": "social-reel.mp4"
+      },
+      "id": "write-001",
+      "name": "Write Binary File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Start": { "main": [[{ "node": "Trim to 30s", "type": "main", "index": 0 }]] },
+    "Trim to 30s": { "main": [[{ "node": "Scale to 1080x1920 (9:16 Reel)", "type": "main", "index": 0 }]] },
+    "Scale to 1080x1920 (9:16 Reel)": { "main": [[{ "node": "Burn Text Overlay", "type": "main", "index": 0 }]] },
+    "Burn Text Overlay": { "main": [[{ "node": "Export Final MP4", "type": "main", "index": 0 }]] },
+    "Export Final MP4": { "main": [[{ "node": "Write Binary File", "type": "main", "index": 0 }]] }
+  },
+  "settings": {},
+  "meta": {
+    "description": "Converts any video into a social-media-ready 9:16 reel: trim to 30s, scale to 1080x1920, burn a CTA text overlay, and export as optimized MP4.",
+    "tags": ["video", "social-media", "reels", "tiktok", "instagram"]
+  }
+}

@@ -14,6 +14,46 @@ export interface FfmpegResult {
   fileExtension: string;
 }
 
+// ─── Process-exit temp-dir registry ──────────────────────────────────────────
+const _activeTempDirs = new Set<string>();
+
+function _registerExitCleanup(): void {
+  const cleanup = (): void => {
+    for (const dir of _activeTempDirs) {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true });
+      } catch {
+        // Best-effort
+      }
+    }
+    _activeTempDirs.clear();
+  };
+  process.once('exit', cleanup);
+  process.once('SIGINT', () => { cleanup(); process.exit(130); });
+  process.once('SIGTERM', () => { cleanup(); process.exit(143); });
+  process.once('uncaughtException', (err) => {
+    cleanup();
+    console.error('Uncaught exception, cleaned up ffmpeg temp dirs:', err);
+    process.exit(1);
+  });
+}
+
+// Register once at module load
+_registerExitCleanup();
+
+// ─── Path quoting ─────────────────────────────────────────────────────────────
+
+/**
+ * Wrap a file path in single quotes, escaping any embedded single quotes.
+ * This ensures paths with spaces or special characters work in ffmpeg commands.
+ */
+export function quotePath(p: string): string {
+  // Escape backslashes and single quotes, then wrap in single quotes
+  return `'${p.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+}
+
+// ─── FFmpeg / ffprobe availability ────────────────────────────────────────────
+
 /**
  * Validate that ffmpeg is available on the system
  */
@@ -63,13 +103,30 @@ export async function validateFfprobe(): Promise<void> {
   }
 }
 
+// ─── Temp directory management ────────────────────────────────────────────────
+
 /**
- * Create a temp directory for this session
+ * Create a temp directory for this session and register it for process-exit cleanup.
  */
 export function createTempDir(): string {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-ffmpeg-'));
+  _activeTempDirs.add(tmpDir);
   return tmpDir;
 }
+
+/**
+ * Clean up a temp directory immediately and deregister from exit cleanup.
+ */
+export function cleanupTempDir(tmpDir: string): void {
+  _activeTempDirs.delete(tmpDir);
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch {
+    // Best-effort cleanup
+  }
+}
+
+// ─── URL download ─────────────────────────────────────────────────────────────
 
 /**
  * Download a URL to a temp file, returns local path
@@ -86,13 +143,16 @@ export async function downloadToTemp(url: string, tmpDir: string, ext?: string):
       if (response.statusCode === 301 || response.statusCode === 302) {
         // Handle redirects
         file.close();
-        fs.unlinkSync(tmpFile);
+        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
         downloadToTemp(response.headers.location!, tmpDir, ext).then(resolve).catch(reject);
         return;
       }
 
       if (response.statusCode !== 200) {
-        reject(new Error(`Failed to download file: HTTP ${response.statusCode}`));
+        reject(new Error(
+          `Failed to download file from URL: HTTP ${response.statusCode}. ` +
+          `URL: ${url}`
+        ));
         return;
       }
 
@@ -105,15 +165,17 @@ export async function downloadToTemp(url: string, tmpDir: string, ext?: string):
 
     request.on('error', (err) => {
       fs.unlink(tmpFile, () => {});
-      reject(err);
+      reject(new Error(`Network error downloading ${url}: ${err.message}`));
     });
 
     file.on('error', (err) => {
       fs.unlink(tmpFile, () => {});
-      reject(err);
+      reject(new Error(`File write error while downloading ${url}: ${err.message}`));
     });
   });
 }
+
+// ─── Input resolution ─────────────────────────────────────────────────────────
 
 /**
  * Resolve input: if URL, download; if path, validate exists. Returns local path.
@@ -140,6 +202,38 @@ export async function resolveInput(input: string, tmpDir: string, ext?: string):
   return resolved;
 }
 
+// ─── Output directory validation ─────────────────────────────────────────────
+
+/**
+ * Ensure the parent directory of an output path exists. Creates it if missing.
+ */
+export function ensureOutputDir(outputPath: string): void {
+  const dir = path.dirname(outputPath);
+  if (!fs.existsSync(dir)) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      throw new Error(
+        `Cannot create output directory "${dir}": ${e.message || String(err)}. ` +
+        'Check that you have write permission to this path.'
+      );
+    }
+  } else {
+    // Directory exists — check write permission
+    try {
+      fs.accessSync(dir, fs.constants.W_OK);
+    } catch {
+      throw new Error(
+        `Output directory "${dir}" exists but is not writable. ` +
+        'Check file system permissions.'
+      );
+    }
+  }
+}
+
+// ─── Parameter validation ─────────────────────────────────────────────────────
+
 /**
  * Validate that required string parameters are non-empty
  */
@@ -150,22 +244,13 @@ export function requireParam(value: string | undefined | null, paramName: string
   return value.trim();
 }
 
+// ─── File helpers ─────────────────────────────────────────────────────────────
+
 /**
  * Read a file and return as base64
  */
 export function fileToBase64(filePath: string): string {
   return fs.readFileSync(filePath).toString('base64');
-}
-
-/**
- * Clean up a temp directory
- */
-export function cleanupTempDir(tmpDir: string): void {
-  try {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  } catch {
-    // Best-effort cleanup
-  }
 }
 
 /**
@@ -201,6 +286,25 @@ export function getMimeType(filePath: string): string {
 }
 
 /**
+ * Build n8n binary data from output file
+ */
+export function buildBinaryData(outputPath: string): {
+  data: string;
+  mimeType: string;
+  fileExtension: string;
+  fileName: string;
+} {
+  const mimeType = getMimeType(outputPath);
+  const fileExtension = path.extname(outputPath).slice(1);
+  const fileName = path.basename(outputPath);
+  const data = fileToBase64(outputPath);
+
+  return { data, mimeType, fileExtension, fileName };
+}
+
+// ─── FFmpeg error parsing ─────────────────────────────────────────────────────
+
+/**
  * Parse FFmpeg stderr to extract a clean error message
  */
 function parseFfmpegError(stderr: string): string {
@@ -217,7 +321,7 @@ function parseFfmpegError(stderr: string): string {
     l.includes('Unknown encoder') ||
     l.includes('Encoder') ||
     l.includes('not found') ||
-    l.startsWith('Option') && l.includes('not found')
+    (l.startsWith('Option') && l.includes('not found'))
   );
   if (errorLines.length > 0) {
     return errorLines.slice(-5).join('\n').trim();
@@ -226,8 +330,11 @@ function parseFfmpegError(stderr: string): string {
   return stderr.slice(-1500).trim();
 }
 
+// ─── FFmpeg execution ─────────────────────────────────────────────────────────
+
 /**
- * Execute ffmpeg command with proper error handling
+ * Execute ffmpeg command with proper error handling.
+ * `args` should use quotePath() for any file paths that may contain spaces.
  */
 export async function runFfmpeg(args: string): Promise<{ stdout: string; stderr: string }> {
   try {
@@ -242,10 +349,13 @@ export async function runFfmpeg(args: string): Promise<{ stdout: string; stderr:
     if (stderr.includes('No such file or directory') || stderr.includes('does not exist')) {
       const match = stderr.match(/(['"]?)([^'"]+?)\1: No such file or directory/);
       const filePath = match ? match[2] : 'input file';
-      throw new Error(`FFmpeg input file not found: "${filePath}". Check that the path is correct.`);
+      throw new Error(
+        `FFmpeg input file not found: "${filePath}". ` +
+        'Check that the path is correct and the file exists.'
+      );
     }
 
-    if (stderr.includes('Unknown encoder') || stderr.includes('Encoder') && stderr.includes('not found')) {
+    if (stderr.includes('Unknown encoder') || (stderr.includes('Encoder') && stderr.includes('not found'))) {
       const match = stderr.match(/(?:Unknown encoder|Encoder) ['"]?([^'"]+)['"]?/);
       const codec = match ? match[1] : 'specified codec';
       throw new Error(
@@ -287,22 +397,7 @@ export async function runFfprobe(args: string): Promise<{ stdout: string; stderr
   }
 }
 
-/**
- * Build n8n binary data from output file
- */
-export function buildBinaryData(outputPath: string): {
-  data: string;
-  mimeType: string;
-  fileExtension: string;
-  fileName: string;
-} {
-  const mimeType = getMimeType(outputPath);
-  const fileExtension = path.extname(outputPath).slice(1);
-  const fileName = path.basename(outputPath);
-  const data = fileToBase64(outputPath);
-
-  return { data, mimeType, fileExtension, fileName };
-}
+// ─── Filter escaping ──────────────────────────────────────────────────────────
 
 /**
  * Escape a string for use in ffmpeg filter_complex
@@ -313,6 +408,8 @@ export function escapeFilterValue(value: string): string {
     .replace(/'/g, "\\'")
     .replace(/:/g, '\\:');
 }
+
+// ─── Time conversion ──────────────────────────────────────────────────────────
 
 /**
  * Convert time string to seconds (supports HH:MM:SS.mmm or plain seconds)

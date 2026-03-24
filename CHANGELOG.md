@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-24
+
+### Added — Wave 6: npm Publish Hardening + Edge Case Fixes
+- **`quotePath()` utility**: All file paths in ffmpeg commands are now properly single-quoted, handling spaces, special characters, ampersands, and parentheses in file paths. Previously, paths with spaces would break ffmpeg commands silently.
+- **`ensureOutputDir()` utility**: Validates that output directories exist and are writable before writing files. Creates missing directories (recursive) and provides actionable error messages if the directory can't be created.
+- **Process-exit temp-dir cleanup**: All temp directories created by `createTempDir()` are now registered and cleaned up on process `exit`, `SIGINT`, `SIGTERM`, and uncaught exceptions. No more orphaned temp files.
+- **`prepublishOnly` runs tests**: `npm run prepublishOnly` now runs both `build` AND `test` before allowing publish.
+- **CONTRIBUTING.md**: Full contributor guide covering how to add operations, run tests, build locally, link for n8n testing, and submit PRs.
+
+### Added — Wave 7: Workflow Examples + README Enhancements
+- **`examples/` directory** with 5 real n8n workflow JSON files ready to import:
+  - `social-media-video-pipeline.json` — Trim → Scale 1080×1920 → Burn text → MP4
+  - `podcast-audio-pipeline.json` — Trim → Loudnorm (-16 LUFS) → Fade → MP3
+  - `thumbnail-generation.json` — Extract frame → Add watermark → PNG
+  - `green-screen-removal.json` — Chroma key → Background overlay → MP4
+  - `hls-streaming-prep.json` — Transcode → HLS segments + M3U8
+- **README badges**: Added Node.js ≥18 badge alongside existing build/npm/license badges.
+- **README Workflow Examples section**: Table linking to all 5 example workflows with descriptions.
+- **README Contributing section**: Now points to CONTRIBUTING.md.
+
+### Added — Wave 8: Test Coverage Expansion (141 → 142 tests)
+- **`ffmpeg.commands.test.ts`**: New integration test file with 70+ tests covering:
+  - `quotePath()` — 8 edge cases (spaces, quotes, backslashes, ampersands, parentheses)
+  - `escapeFilterValue()` — combinations of special characters
+  - `timeToSeconds()` — zero, large values, fractional, 24-hour
+  - `getMimeType()` — uppercase extensions, `.ts`, `.3gp`, `.opus`, `.json`
+  - `requireParam()` — `"0"` value, null, undefined, whitespace varieties
+  - `createTempDir/cleanupTempDir` — 10 unique dirs, idempotent cleanup, nested file cleanup
+  - `ensureOutputDir` — single/deeply nested dir creation, no output file side-effects
+  - `runFfmpeg` error classification — file not found, unknown encoder, permission denied, exit code
+  - `resolveInput` — spaces in paths, existing files
+  - Node operation counts — all 4 nodes
+  - `package.json` npm readiness — 10 assertions on keywords, license, engines, n8n field, etc.
+  - Command string safety — space-safe quoting in constructed commands
+- **CI coverage**: GitHub Actions now runs `npm run test:coverage` and uploads coverage artifact.
+
+### Added — Wave 9: Raw FFmpeg Passthrough Operation
+- **`Raw FFmpeg Command` operation** in FfmpegAdvanced: Execute arbitrary ffmpeg commands with full argument control. Supports optional binary output return by specifying the output file path.
+
+### Fixed
+- `parseFfmpegError()` — fixed `||` operator precedence bug (was mismatching `Encoder … not found` detection).
+- `extraArgs` property now has `displayOptions.hide` to suppress it for `raw`, `hls`, and `dash` operations that don't use it.
+
 ## [0.5.0] - 2026-03-24
 
 ### Added — FFmpeg Analyze (2 new operations)

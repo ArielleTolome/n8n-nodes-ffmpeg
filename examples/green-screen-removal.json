@@ -1,0 +1,76 @@
+{
+  "name": "Green Screen Removal (Chroma Key → Background Overlay)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-001",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "operation": "chromaKey",
+        "inputFile": "/path/to/green-screen-video.mp4",
+        "color": "0x00FF00",
+        "similarity": 0.15,
+        "blend": 0.05
+      },
+      "id": "chroma-001",
+      "name": "Remove Green Screen",
+      "type": "n8n-nodes-ffmpeg.ffmpegAdvanced",
+      "typeVersion": 1,
+      "position": [340, 300]
+    },
+    {
+      "parameters": {
+        "operation": "overlay",
+        "inputFile": "/path/to/background.mp4",
+        "overlayFile": "={{ $json.filePath }}",
+        "x": "0",
+        "y": "0"
+      },
+      "id": "overlay-001",
+      "name": "Overlay on Background",
+      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "typeVersion": 1,
+      "position": [580, 300]
+    },
+    {
+      "parameters": {
+        "operation": "convert",
+        "inputFile": "={{ $json.filePath }}",
+        "outputFormat": "mp4",
+        "videoCodec": "libx264",
+        "crf": 20
+      },
+      "id": "export-001",
+      "name": "Export Composited MP4",
+      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "typeVersion": 1,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "fileName": "composited.mp4"
+      },
+      "id": "write-001",
+      "name": "Save Output",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [1060, 300]
+    }
+  ],
+  "connections": {
+    "Start": { "main": [[{ "node": "Remove Green Screen", "type": "main", "index": 0 }]] },
+    "Remove Green Screen": { "main": [[{ "node": "Overlay on Background", "type": "main", "index": 0 }]] },
+    "Overlay on Background": { "main": [[{ "node": "Export Composited MP4", "type": "main", "index": 0 }]] },
+    "Export Composited MP4": { "main": [[{ "node": "Save Output", "type": "main", "index": 0 }]] }
+  },
+  "settings": {},
+  "meta": {
+    "description": "Remove green screen from a video using chroma key, then composite it onto a custom background video using overlay.",
+    "tags": ["green-screen", "chroma-key", "compositing", "vfx", "background-removal"]
+  }
+}

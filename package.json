@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-ffmpeg",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Production-grade n8n community nodes for FFmpeg video/audio processing. More powerful than Fal.ai's FFmpeg API.",
   "keywords": [
     "n8n-community-node-package",
@@ -36,7 +36,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build && npm test"
   },
   "files": [
     "dist",

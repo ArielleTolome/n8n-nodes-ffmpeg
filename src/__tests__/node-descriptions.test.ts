@@ -105,8 +105,8 @@ describe('FfmpegAdvanced operations', () => {
     expect(opValues).toContain('dash');
   });
 
-  test('has at least 12 operations', () => {
-    expect(opValues.length).toBeGreaterThanOrEqual(12);
+  test('has at least 16 operations', () => {
+    expect(opValues.length).toBeGreaterThanOrEqual(16);
   });
 });
 
