@@ -1,6 +1,6 @@
 # n8n-nodes-ffmpeg
 
-Production-grade n8n community nodes for FFmpeg video/audio processing. More powerful and feature-rich than Fal.ai's FFmpeg API — **63+ operations** across 4 nodes.
+Production-grade n8n community nodes for FFmpeg video/audio processing. More powerful and feature-rich than Fal.ai's FFmpeg API — **80+ operations** across 4 nodes.
 
 [![Build Status](https://github.com/ArielleTolome/n8n-nodes-ffmpeg/actions/workflows/build.yml/badge.svg)](https://github.com/ArielleTolome/n8n-nodes-ffmpeg/actions)
 [![npm version](https://img.shields.io/npm/v/n8n-nodes-ffmpeg)](https://www.npmjs.com/package/n8n-nodes-ffmpeg)
@@ -19,6 +19,7 @@ Production-grade n8n community nodes for FFmpeg video/audio processing. More pow
   - [FFmpeg Advanced](#ffmpeg-advanced)
 - [Workflow Examples](#workflow-examples)
 - [Common Patterns](#common-patterns)
+- [Publishing](#publishing-to-npm)
 - [Contributing](#contributing)
 - [Troubleshooting](#troubleshooting)
 
@@ -28,10 +29,10 @@ Production-grade n8n community nodes for FFmpeg video/audio processing. More pow
 
 | Node | Operations | Key Capabilities |
 |------|-----------|-----------------|
-| **FFmpeg Video** | 27 | Trim, merge, convert, scale, crop, rotate, watermark, PiP, subtitles, GIF, slideshow |
-| **FFmpeg Audio** | 10 | Normalize, mix, remove silence, speed, fade, convert |
-| **FFmpeg Analyze** | 8 | Metadata, scene detection, silence detection, sprite sheets |
-| **FFmpeg Advanced** | 15 | LUT grading, chroma key, stabilize, HLS, DASH, deinterlace, ken burns, timelapse |
+| **FFmpeg Video** | 28 | Trim, merge, convert, scale, crop, rotate, watermark, PiP, subtitles, GIF, slideshow, custom command |
+| **FFmpeg Audio** | 16 | Normalize, mix, compressor, equalizer, pitch shift, stereo-to-mono, channel mapping, generate tones |
+| **FFmpeg Analyze** | 10 | Metadata, scene detection, silence detection, sprite sheets, waveform video, subtitle extraction |
+| **FFmpeg Advanced** | 20 | LUT grading, chroma key, stabilize, HLS, DASH, color curves, slow motion, motion blur, smart crop |
 
 ---
 
@@ -76,7 +77,7 @@ Then restart n8n.
 
 ### FFmpeg Video
 
-The main workhorse node with 27 operations for video editing.
+The main workhorse node with 28 operations for video editing.
 
 #### Trim / Cut
 Cut a video to a specific time range.
@@ -547,6 +548,26 @@ Real n8n workflow JSON files you can import directly into n8n. Find them in the 
 | [HLS Streaming Prep](examples/hls-streaming-prep.json) | Transcode → Segment into HLS 6-second chunks with M3U8 |
 
 **To import:** In n8n, go to *Workflows → Import from File* and select the JSON.
+
+---
+
+## Publishing to npm
+
+> **Note:** npm publishing requires an npm account and an `NPM_TOKEN` secret configured in the repository.
+
+To publish manually:
+```bash
+npm login
+npm publish --access public
+```
+
+To enable automatic publishing via GitHub Actions on each release tag, add your `NPM_TOKEN` to the repository secrets under **Settings → Secrets and variables → Actions**.
+
+Until published, you can install directly from GitHub:
+```bash
+cd ~/.n8n/custom
+npm install ArielleTolome/n8n-nodes-ffmpeg
+```
 
 ---
 

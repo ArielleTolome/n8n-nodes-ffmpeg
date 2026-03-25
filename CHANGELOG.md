@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-24
+
+### 🎉 v1.0.0 — Production Release
+
+This is the first stable, production-ready release of n8n-nodes-ffmpeg. The journey from v0.1.0 to v1.0.0 spanned 12 development waves, growing from a basic proof-of-concept to 80+ operations across 4 nodes.
+
+### What's Included in v1.0.0
+
+#### Summary of all waves:
+- **Wave 1 (v0.1.0)**: Foundation — proper n8n package structure, basic video ops
+- **Wave 2 (v0.2.0)**: Error handling, validation, CI/CD pipeline, CHANGELOG
+- **Wave 3 (v0.3.0)**: 7 new advanced operations (blur region, deinterlace, ken burns, timelapse, DASH, audio speed, remove silence)
+- **Wave 4 (v0.4.0)**: Test suite, comprehensive README, CI test integration
+- **Wave 5 (v0.5.0)**: Subtitle extraction, waveform video, pitch shift, npm publish prep
+- **Wave 6 (v0.6.0)**: `quotePath()`, `ensureOutputDir()`, process-exit cleanup, `prepublishOnly` tests, CONTRIBUTING.md
+- **Wave 7 (v0.6.0)**: 5 real workflow examples, README workflow section
+- **Wave 8 (v0.6.0)**: 142-test suite, CI coverage upload
+- **Wave 9 (v0.6.0)**: Raw FFmpeg passthrough operation in FfmpegAdvanced
+- **Wave 10 (v0.7.0)**: Custom FFmpeg op in FfmpegVideo, hwaccel, timeouts, xfade audio fix, 40+ xfade effects
+- **Wave 11 (v0.8.0)**: 9 new operations — compressor/EQ/stereo-to-mono/channel map/generate tone (audio) + color curves/motion blur/slow motion/smart crop (video)
+- **Wave 12 (v1.0.0)**: Final README pass, publishing docs, version bump
+
+#### Final stats:
+- **4 nodes**: FfmpegVideo, FfmpegAudio, FfmpegAnalyze, FfmpegAdvanced
+- **80+ operations** total
+- **153 tests** passing
+- Full TypeScript with strict mode
+- CI/CD with GitHub Actions (build + test on Node 18/20/22)
+- Production-grade error messages
+- URL input handling (downloads to temp automatically)
+- Hardware acceleration support (videotoolbox/nvenc/vaapi)
+- Configurable timeouts on all operations
+
+### Upgrade Notes
+No breaking changes from 0.8.0. This is a stability and documentation release.
+
+> **npm publish**: Requires npm account and `NPM_TOKEN` secret. See README Publishing section.
+
 ## [0.8.0] - 2026-03-24
 
 ### Added — Wave 11: More Audio + Video Operations
