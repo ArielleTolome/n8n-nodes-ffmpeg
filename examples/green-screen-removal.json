@@ -19,7 +19,7 @@
       },
       "id": "chroma-001",
       "name": "Remove Green Screen",
-      "type": "n8n-nodes-ffmpeg.ffmpegAdvanced",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegAdvanced",
       "typeVersion": 1,
       "position": [340, 300]
     },
@@ -33,7 +33,7 @@
       },
       "id": "overlay-001",
       "name": "Overlay on Background",
-      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegVideo",
       "typeVersion": 1,
       "position": [580, 300]
     },
@@ -47,7 +47,7 @@
       },
       "id": "export-001",
       "name": "Export Composited MP4",
-      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegVideo",
       "typeVersion": 1,
       "position": [820, 300]
     },

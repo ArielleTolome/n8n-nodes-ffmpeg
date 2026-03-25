@@ -21,7 +21,7 @@
       },
       "id": "transcode-001",
       "name": "Transcode to H.264/AAC",
-      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegVideo",
       "typeVersion": 1,
       "position": [340, 300]
     },
@@ -36,7 +36,7 @@
       },
       "id": "hls-001",
       "name": "Generate HLS Segments",
-      "type": "n8n-nodes-ffmpeg.ffmpegAdvanced",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegAdvanced",
       "typeVersion": 1,
       "position": [580, 300]
     },

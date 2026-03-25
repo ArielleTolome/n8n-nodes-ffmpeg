@@ -18,7 +18,7 @@
       },
       "id": "trim-001",
       "name": "Trim Intro Silence",
-      "type": "n8n-nodes-ffmpeg.ffmpegAudio",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegAudio",
       "typeVersion": 1,
       "position": [340, 300]
     },
@@ -32,7 +32,7 @@
       },
       "id": "norm-001",
       "name": "Loudness Normalize (-16 LUFS)",
-      "type": "n8n-nodes-ffmpeg.ffmpegAudio",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegAudio",
       "typeVersion": 1,
       "position": [580, 300]
     },
@@ -45,7 +45,7 @@
       },
       "id": "fade-001",
       "name": "Add Fade In/Out",
-      "type": "n8n-nodes-ffmpeg.ffmpegAudio",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegAudio",
       "typeVersion": 1,
       "position": [820, 300]
     },
@@ -59,7 +59,7 @@
       },
       "id": "export-001",
       "name": "Export MP3 192kbps",
-      "type": "n8n-nodes-ffmpeg.ffmpegAudio",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegAudio",
       "typeVersion": 1,
       "position": [1060, 300]
     },

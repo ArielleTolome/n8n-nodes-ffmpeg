@@ -3,7 +3,7 @@
 Production-grade n8n community nodes for FFmpeg video/audio processing. More powerful and feature-rich than Fal.ai's FFmpeg API — **80+ operations** across 4 nodes.
 
 [![Build Status](https://github.com/ArielleTolome/n8n-nodes-ffmpeg/actions/workflows/build.yml/badge.svg)](https://github.com/ArielleTolome/n8n-nodes-ffmpeg/actions)
-[![npm version](https://img.shields.io/npm/v/n8n-nodes-ffmpeg)](https://www.npmjs.com/package/n8n-nodes-ffmpeg)
+[![npm version](https://img.shields.io/npm/v/n8n-nodes-ffmpeg-studio)](https://www.npmjs.com/package/n8n-nodes-ffmpeg-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js ≥18](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -59,7 +59,7 @@ Production-grade n8n community nodes for FFmpeg video/audio processing. More pow
 
 1. Open n8n → **Settings** → **Community Nodes**
 2. Click **Install a community node**
-3. Enter `n8n-nodes-ffmpeg`
+3. Enter `n8n-nodes-ffmpeg-studio`
 4. Click **Install**
 
 ### Via npm

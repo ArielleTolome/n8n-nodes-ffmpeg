@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🎉 v1.0.0 — Production Release
 
-This is the first stable, production-ready release of n8n-nodes-ffmpeg. The journey from v0.1.0 to v1.0.0 spanned 12 development waves, growing from a basic proof-of-concept to 80+ operations across 4 nodes.
+This is the first stable, production-ready release of n8n-nodes-ffmpeg-studio. The journey from v0.1.0 to v1.0.0 spanned 12 development waves, growing from a basic proof-of-concept to 80+ operations across 4 nodes.
 
 ### What's Included in v1.0.0
 

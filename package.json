@@ -1,7 +1,7 @@
 {
-  "name": "n8n-nodes-ffmpeg",
+  "name": "n8n-nodes-ffmpeg-studio",
   "version": "1.0.0",
-  "description": "Production-grade n8n community nodes for FFmpeg video/audio processing. More powerful than Fal.ai's FFmpeg API.",
+  "description": "Production-grade n8n community nodes for FFmpeg video/audio processing. 80+ operations \u2014 far more powerful than Fal.ai FFmpeg API.",
   "keywords": [
     "n8n-community-node-package",
     "n8n",

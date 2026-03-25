@@ -18,7 +18,7 @@
       },
       "id": "trim-001",
       "name": "Trim to 30s",
-      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegVideo",
       "typeVersion": 1,
       "position": [340, 300]
     },
@@ -32,7 +32,7 @@
       },
       "id": "scale-001",
       "name": "Scale to 1080x1920 (9:16 Reel)",
-      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegVideo",
       "typeVersion": 1,
       "position": [580, 300]
     },
@@ -50,7 +50,7 @@
       },
       "id": "text-001",
       "name": "Burn Text Overlay",
-      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegVideo",
       "typeVersion": 1,
       "position": [820, 300]
     },
@@ -65,7 +65,7 @@
       },
       "id": "export-001",
       "name": "Export Final MP4",
-      "type": "n8n-nodes-ffmpeg.ffmpegVideo",
+      "type": "n8n-nodes-ffmpeg-studio.ffmpegVideo",
       "typeVersion": 1,
       "position": [1060, 300]
     },
