@@ -49,6 +49,11 @@ export class FfmpegAudio implements INodeType {
           { name: 'Remove Audio from Video', value: 'removeFromVideo', description: 'Strip audio from a video file' },
           { name: 'Remove Silence', value: 'removeSilence', description: 'Strip silent sections from audio (silenceremove)' },
           { name: 'Mix Audio Tracks', value: 'mix', description: 'Mix multiple audio streams together' },
+          { name: 'Compressor / Limiter', value: 'compressor', description: 'Dynamic range compression and limiting (acompressor)' },
+          { name: 'Equalizer (Parametric EQ)', value: 'equalizer', description: 'Multi-band parametric equalizer (equalizer filter)' },
+          { name: 'Stereo to Mono', value: 'stereoToMono', description: 'Convert stereo/multi-channel to mono (amerge/pan filter)' },
+          { name: 'Channel Mapping', value: 'channelMap', description: 'Re-map audio channels (pan filter)' },
+          { name: 'Generate Silence / Tone', value: 'generateTone', description: 'Generate a tone or silence of specified duration' },
         ],
         default: 'trim',
       },
@@ -276,6 +281,142 @@ export class FfmpegAudio implements INodeType {
         displayOptions: { show: { operation: ['removeSilence'] } },
       },
 
+      // ─── COMPRESSOR OPTIONS ───────────────────────────────────────────
+      {
+        displayName: 'Threshold (dB)',
+        name: 'compThreshold',
+        type: 'number',
+        typeOptions: { minValue: -60, maxValue: 0, numberPrecision: 1 },
+        default: -12,
+        description: 'Compression starts above this level in dB',
+        displayOptions: { show: { operation: ['compressor'] } },
+      },
+      {
+        displayName: 'Ratio',
+        name: 'compRatio',
+        type: 'number',
+        typeOptions: { minValue: 1, maxValue: 20, numberPrecision: 1 },
+        default: 4,
+        description: 'Compression ratio (e.g., 4 = 4:1 compression). Use 20+ for limiting.',
+        displayOptions: { show: { operation: ['compressor'] } },
+      },
+      {
+        displayName: 'Attack (ms)',
+        name: 'compAttack',
+        type: 'number',
+        typeOptions: { minValue: 0.01, maxValue: 2000, numberPrecision: 1 },
+        default: 20,
+        description: 'Attack time in milliseconds',
+        displayOptions: { show: { operation: ['compressor'] } },
+      },
+      {
+        displayName: 'Release (ms)',
+        name: 'compRelease',
+        type: 'number',
+        typeOptions: { minValue: 1, maxValue: 9000, numberPrecision: 0 },
+        default: 250,
+        description: 'Release time in milliseconds',
+        displayOptions: { show: { operation: ['compressor'] } },
+      },
+      {
+        displayName: 'Makeup Gain (dB)',
+        name: 'compMakeup',
+        type: 'number',
+        typeOptions: { minValue: 0, maxValue: 60, numberPrecision: 1 },
+        default: 0,
+        description: 'Apply makeup gain after compression',
+        displayOptions: { show: { operation: ['compressor'] } },
+      },
+      {
+        displayName: 'Knee Width (dB)',
+        name: 'compKnee',
+        type: 'number',
+        typeOptions: { minValue: 1, maxValue: 8, numberPrecision: 1 },
+        default: 2.8284,
+        description: 'Soft knee width in dB',
+        displayOptions: { show: { operation: ['compressor'] } },
+      },
+
+      // ─── EQUALIZER OPTIONS ────────────────────────────────────────────
+      {
+        displayName: 'EQ Bands (JSON)',
+        name: 'eqBands',
+        type: 'string',
+        typeOptions: { rows: 4 },
+        default: '[{"freq": 100, "gain": 3, "width": 200}, {"freq": 1000, "gain": -2, "width": 500}, {"freq": 10000, "gain": 2, "width": 2000}]',
+        description: 'JSON array of EQ bands. Each band: { "freq": Hz, "gain": dB, "width": Hz }. Positive gain = boost, negative = cut.',
+        displayOptions: { show: { operation: ['equalizer'] } },
+      },
+
+      // ─── STEREO TO MONO ───────────────────────────────────────────────
+      {
+        displayName: 'Mono Mix Mode',
+        name: 'monoMode',
+        type: 'options',
+        options: [
+          { name: 'Average both channels', value: 'average' },
+          { name: 'Left channel only', value: 'left' },
+          { name: 'Right channel only', value: 'right' },
+        ],
+        default: 'average',
+        displayOptions: { show: { operation: ['stereoToMono'] } },
+      },
+
+      // ─── CHANNEL MAP OPTIONS ──────────────────────────────────────────
+      {
+        displayName: 'Channel Layout',
+        name: 'channelLayout',
+        type: 'options',
+        options: [
+          { name: 'Mono (1ch)', value: 'mono' },
+          { name: 'Stereo (2ch)', value: 'stereo' },
+          { name: '5.1 Surround', value: '5.1' },
+          { name: '7.1 Surround', value: '7.1' },
+          { name: 'Swap L/R', value: 'swap' },
+          { name: 'Duplicate Left to Right', value: 'dup_left' },
+          { name: 'Duplicate Right to Left', value: 'dup_right' },
+        ],
+        default: 'stereo',
+        displayOptions: { show: { operation: ['channelMap'] } },
+      },
+
+      // ─── GENERATE TONE OPTIONS ────────────────────────────────────────
+      {
+        displayName: 'Generate Type',
+        name: 'toneType',
+        type: 'options',
+        options: [
+          { name: 'Silence', value: 'silence' },
+          { name: 'Sine Wave', value: 'sine' },
+          { name: 'White Noise', value: 'whitenoise' },
+          { name: 'Pink Noise', value: 'pinknoise' },
+        ],
+        default: 'sine',
+        displayOptions: { show: { operation: ['generateTone'] } },
+      },
+      {
+        displayName: 'Frequency (Hz)',
+        name: 'toneFrequency',
+        type: 'number',
+        default: 440,
+        description: 'Tone frequency in Hz (only for sine wave)',
+        displayOptions: { show: { operation: ['generateTone'], toneType: ['sine'] } },
+      },
+      {
+        displayName: 'Duration (seconds)',
+        name: 'toneDuration',
+        type: 'number',
+        default: 5,
+        displayOptions: { show: { operation: ['generateTone'] } },
+      },
+      {
+        displayName: 'Sample Rate (Hz)',
+        name: 'toneSampleRate',
+        type: 'number',
+        default: 44100,
+        displayOptions: { show: { operation: ['generateTone'] } },
+      },
+
       // ─── TIMEOUT ──────────────────────────────────────────────────────
       {
         displayName: 'Timeout (seconds)',
@@ -471,6 +612,99 @@ export class FfmpegAudio implements INodeType {
             silenceFilter = `silenceremove=start_periods=1:start_duration=${minDuration}:start_threshold=${threshStr}:stop_periods=-1:stop_duration=${minDuration}:stop_threshold=${threshStr}`;
           }
           ffmpegCmd = `-y -i "${inputPath}" -af "${silenceFilter}" -ab ${bitrate} ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'compressor') {
+          const inputAudio = this.getNodeParameter('inputAudio', i) as string;
+          const threshold = this.getNodeParameter('compThreshold', i, -12) as number;
+          const ratio = this.getNodeParameter('compRatio', i, 4) as number;
+          const attack = this.getNodeParameter('compAttack', i, 20) as number;
+          const release = this.getNodeParameter('compRelease', i, 250) as number;
+          const makeup = this.getNodeParameter('compMakeup', i, 0) as number;
+          const knee = this.getNodeParameter('compKnee', i, 2.8284) as number;
+          const bitrate = this.getNodeParameter('audioBitrate', i, '192k') as string;
+          const inputPath = await resolveInput(inputAudio, tmpDir);
+
+          const compFilter = `acompressor=threshold=${threshold}dB:ratio=${ratio}:attack=${attack}:release=${release}:makeup=${makeup}dB:knee=${knee}dB`;
+          ffmpegCmd = `-y -i "${inputPath}" -af "${compFilter}" -ab ${bitrate} ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'equalizer') {
+          const inputAudio = this.getNodeParameter('inputAudio', i) as string;
+          const eqBandsJson = this.getNodeParameter('eqBands', i, '[]') as string;
+          const bitrate = this.getNodeParameter('audioBitrate', i, '192k') as string;
+          const inputPath = await resolveInput(inputAudio, tmpDir);
+
+          let bands: Array<{ freq: number; gain: number; width: number }> = [];
+          try {
+            bands = JSON.parse(eqBandsJson);
+          } catch {
+            throw new NodeOperationError(this.getNode(), 'EQ Bands must be valid JSON array. Example: [{"freq": 100, "gain": 3, "width": 200}]', { itemIndex: i });
+          }
+
+          // Build chained equalizer filters
+          const eqFilters = bands.map(b => `equalizer=f=${b.freq}:t=o:w=${b.width}:g=${b.gain}`).join(',');
+          if (!eqFilters) {
+            throw new NodeOperationError(this.getNode(), 'EQ Bands array must not be empty.', { itemIndex: i });
+          }
+          ffmpegCmd = `-y -i "${inputPath}" -af "${eqFilters}" -ab ${bitrate} ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'stereoToMono') {
+          const inputAudio = this.getNodeParameter('inputAudio', i) as string;
+          const monoMode = this.getNodeParameter('monoMode', i, 'average') as string;
+          const bitrate = this.getNodeParameter('audioBitrate', i, '192k') as string;
+          const inputPath = await resolveInput(inputAudio, tmpDir);
+
+          let panFilter: string;
+          if (monoMode === 'left') {
+            panFilter = 'pan=mono|c0=c0';
+          } else if (monoMode === 'right') {
+            panFilter = 'pan=mono|c0=c1';
+          } else {
+            panFilter = 'pan=mono|c0=0.5*c0+0.5*c1';
+          }
+          ffmpegCmd = `-y -i "${inputPath}" -af "${panFilter}" -ac 1 -ab ${bitrate} ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'channelMap') {
+          const inputAudio = this.getNodeParameter('inputAudio', i) as string;
+          const channelLayout = this.getNodeParameter('channelLayout', i, 'stereo') as string;
+          const bitrate = this.getNodeParameter('audioBitrate', i, '192k') as string;
+          const inputPath = await resolveInput(inputAudio, tmpDir);
+
+          let channelFilter: string;
+          if (channelLayout === 'mono') {
+            channelFilter = 'pan=mono|c0=0.5*c0+0.5*c1';
+          } else if (channelLayout === 'swap') {
+            channelFilter = 'pan=stereo|c0=c1|c1=c0';
+          } else if (channelLayout === 'dup_left') {
+            channelFilter = 'pan=stereo|c0=c0|c1=c0';
+          } else if (channelLayout === 'dup_right') {
+            channelFilter = 'pan=stereo|c0=c1|c1=c1';
+          } else if (channelLayout === '5.1') {
+            // Upmix stereo to 5.1
+            channelFilter = 'pan=5.1|FL=c0|FR=c1|FC=0.5*c0+0.5*c1|LFE=0.5*c0+0.5*c1|BL=c0|BR=c1';
+          } else if (channelLayout === '7.1') {
+            channelFilter = 'pan=7.1|FL=c0|FR=c1|FC=0.5*c0+0.5*c1|LFE=0.5*c0+0.5*c1|BL=c0|BR=c1|SL=c0|SR=c1';
+          } else {
+            // Default stereo passthrough
+            channelFilter = 'aformat=channel_layouts=stereo';
+          }
+          ffmpegCmd = `-y -i "${inputPath}" -af "${channelFilter}" -ab ${bitrate} ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'generateTone') {
+          const toneType = this.getNodeParameter('toneType', i, 'sine') as string;
+          const duration = this.getNodeParameter('toneDuration', i, 5) as number;
+          const sampleRate = this.getNodeParameter('toneSampleRate', i, 44100) as number;
+
+          if (toneType === 'silence') {
+            ffmpegCmd = `-y -f lavfi -i "anullsrc=r=${sampleRate}:cl=stereo" -t ${duration} ${extraArgs} "${outputPath}"`;
+          } else if (toneType === 'sine') {
+            const freq = this.getNodeParameter('toneFrequency', i, 440) as number;
+            ffmpegCmd = `-y -f lavfi -i "sine=frequency=${freq}:sample_rate=${sampleRate}:duration=${duration}" ${extraArgs} "${outputPath}"`;
+          } else if (toneType === 'whitenoise') {
+            ffmpegCmd = `-y -f lavfi -i "aevalsrc='random(0)*2-1':s=${sampleRate}:d=${duration}" ${extraArgs} "${outputPath}"`;
+          } else {
+            // Pink noise via anoisesrc
+            ffmpegCmd = `-y -f lavfi -i "anoisesrc=d=${duration}:c=pink:r=${sampleRate}" ${extraArgs} "${outputPath}"`;
+          }
 
         } else {
           throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`, { itemIndex: i });

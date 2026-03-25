@@ -64,7 +64,7 @@ import {
 
 // ─── quotePath ───────────────────────────────────────────────────────────────
 
-describe('quotePath — comprehensive', () => {
+describe('quotePath - comprehensive', () => {
   test('wraps simple path in single quotes', () => {
     expect(quotePath('/tmp/file.mp4')).toBe("'/tmp/file.mp4'");
   });
@@ -104,7 +104,7 @@ describe('quotePath — comprehensive', () => {
 
 // ─── escapeFilterValue ────────────────────────────────────────────────────────
 
-describe('escapeFilterValue — comprehensive', () => {
+describe('escapeFilterValue - comprehensive', () => {
   test('escapes colons for ffmpeg filter', () => {
     expect(escapeFilterValue('fontfile=/path/to:font')).toContain('\\:');
   });
@@ -131,7 +131,7 @@ describe('escapeFilterValue — comprehensive', () => {
 
 // ─── timeToSeconds ────────────────────────────────────────────────────────────
 
-describe('timeToSeconds — edge cases', () => {
+describe('timeToSeconds - edge cases', () => {
   test('zero string', () => {
     expect(timeToSeconds('0')).toBe(0);
   });
@@ -159,7 +159,7 @@ describe('timeToSeconds — edge cases', () => {
 
 // ─── getMimeType ──────────────────────────────────────────────────────────────
 
-describe('getMimeType — edge cases', () => {
+describe('getMimeType - edge cases', () => {
   test('handles uppercase extensions', () => {
     expect(getMimeType('VIDEO.MP4')).toBe('video/mp4');
     expect(getMimeType('AUDIO.MP3')).toBe('audio/mpeg');
@@ -192,7 +192,7 @@ describe('getMimeType — edge cases', () => {
 
 // ─── requireParam ─────────────────────────────────────────────────────────────
 
-describe('requireParam — edge cases', () => {
+describe('requireParam - edge cases', () => {
   test('accepts non-empty string', () => {
     expect(requireParam('hello', 'param')).toBe('hello');
   });
@@ -224,7 +224,7 @@ describe('requireParam — edge cases', () => {
 
 // ─── createTempDir / cleanupTempDir ───────────────────────────────────────────
 
-describe('createTempDir / cleanupTempDir — edge cases', () => {
+describe('createTempDir / cleanupTempDir - edge cases', () => {
   test('always creates in os.tmpdir()', () => {
     const dir = createTempDir();
     expect(dir.startsWith(os.tmpdir())).toBe(true);
@@ -332,7 +332,7 @@ describe('runFfmpeg error classification', () => {
 
 // ─── resolveInput ─────────────────────────────────────────────────────────────
 
-describe('resolveInput — edge cases', () => {
+describe('resolveInput - edge cases', () => {
   let resolveInput: (input: string, tmpDir: string, ext?: string) => Promise<string>;
 
   beforeAll(async () => {
@@ -373,21 +373,21 @@ describe('resolveInput — edge cases', () => {
 // ─── Node descriptions sanity ─────────────────────────────────────────────────
 
 describe('Node operation counts', () => {
-  test('FfmpegVideo has 27+ operations', async () => {
+  test('FfmpegVideo has 28+ operations (including custom)', async () => {
     const { FfmpegVideo } = await import('../nodes/FfmpegVideo/FfmpegVideo.node');
     const node = new FfmpegVideo();
     const opProp = node.description.properties.find(p => p.name === 'operation');
     const ops = (opProp as { options?: Array<{ value: string }> })?.options ?? [];
-    expect(ops.length).toBeGreaterThanOrEqual(27);
+    expect(ops.length).toBeGreaterThanOrEqual(28);
   });
 
-  test('FfmpegAudio has 10+ operations', async () => {
+  test('FfmpegAudio has 14+ operations (including Wave 11)', async () => {
     const { FfmpegAudio } = await import('../nodes/FfmpegAudio/FfmpegAudio.node');
     const node = new FfmpegAudio();
     const opProp = node.description.properties.find(p => p.name === 'operation');
     const ops = (opProp as { options?: Array<{ value: string }> })?.options ?? [];
-    expect(ops.length).toBeGreaterThanOrEqual(10);
-  });
+    expect(ops.length).toBeGreaterThanOrEqual(14);
+  }); 
 
   test('FfmpegAnalyze has 8+ operations', async () => {
     const { FfmpegAnalyze } = await import('../nodes/FfmpegAnalyze/FfmpegAnalyze.node');
@@ -397,12 +397,12 @@ describe('Node operation counts', () => {
     expect(ops.length).toBeGreaterThanOrEqual(8);
   });
 
-  test('FfmpegAdvanced has 16+ operations', async () => {
+  test('FfmpegAdvanced has 20+ operations (including Wave 11)', async () => {
     const { FfmpegAdvanced } = await import('../nodes/FfmpegAdvanced/FfmpegAdvanced.node');
     const node = new FfmpegAdvanced();
     const opProp = node.description.properties.find(p => p.name === 'operation');
     const ops = (opProp as { options?: Array<{ value: string }> })?.options ?? [];
-    expect(ops.length).toBeGreaterThanOrEqual(16);
+    expect(ops.length).toBeGreaterThanOrEqual(20);
   });
 
   test('FfmpegAdvanced includes raw operation', async () => {
@@ -496,7 +496,7 @@ describe('package.json npm publish readiness', () => {
   });
 });
 
-// ─── Command safety — spaces in paths ─────────────────────────────────────────
+// ─── Command safety - spaces in paths ─────────────────────────────────────────
 
 describe('quotePath in command strings', () => {
   test('quoted path with spaces is safe in shell command', () => {

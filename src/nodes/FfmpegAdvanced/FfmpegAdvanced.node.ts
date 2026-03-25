@@ -42,13 +42,17 @@ export class FfmpegAdvanced implements INodeType {
           { name: 'Blur Video', value: 'blur', description: 'Apply Gaussian blur to entire video' },
           { name: 'Chroma Key (Green Screen)', value: 'chromakey', description: 'Remove green/blue screen background' },
           { name: 'Color Adjustment', value: 'colorAdjust', description: 'Adjust brightness, contrast, saturation, hue' },
+          { name: 'Color Curves (Instagram Filters)', value: 'colorCurves', description: 'Apply curve-based color grading (curves filter)' },
           { name: 'DASH Packaging', value: 'dash', description: 'Package video for MPEG-DASH streaming (MPD manifest + segments)' },
           { name: 'Deinterlace', value: 'deinterlace', description: 'Deinterlace interlaced video (yadif filter)' },
           { name: 'Denoise Video', value: 'denoise', description: 'Reduce video noise (hqdn3d)' },
           { name: 'Draw Shapes / Boxes', value: 'drawbox', description: 'Draw rectangles or boxes on video' },
           { name: 'HLS Segmentation', value: 'hls', description: 'Segment video for HTTP Live Streaming' },
           { name: 'Ken Burns / Zoom Pan', value: 'kenburns', description: 'Animated zoom and pan effect (zoompan filter)' },
+          { name: 'Motion Blur', value: 'motionBlur', description: 'Add motion blur effect (minterpolate + tmix)' },
           { name: 'Sharpen Video', value: 'sharpen', description: 'Sharpen video with unsharp mask' },
+          { name: 'Slow Motion (Frame Interpolation)', value: 'slowMotion', description: 'Create smooth slow motion via frame interpolation (minterpolate)' },
+          { name: 'Smart Aspect Ratio Crop', value: 'smartCrop', description: 'Change aspect ratio with centered crop (no letterbox)' },
           { name: 'Stabilize Video', value: 'stabilize', description: 'Smooth out camera shake (vidstab)' },
           { name: 'Time-lapse', value: 'timelapse', description: 'Create time-lapse by selecting frames at interval' },
           { name: 'Add Vignette', value: 'vignette', description: 'Add cinematic vignette effect' },
@@ -546,6 +550,110 @@ export class FfmpegAdvanced implements INodeType {
         displayOptions: { show: { operation: ['dash'] } },
       },
 
+      // ─── COLOR CURVES ─────────────────────────────────────────────────
+      {
+        displayName: 'Color Preset',
+        name: 'curvesPreset',
+        type: 'options',
+        options: [
+          { name: 'Custom (use JSON curves)', value: 'custom' },
+          { name: 'Warm (sunset glow)', value: 'warm' },
+          { name: 'Cool (blue tones)', value: 'cool' },
+          { name: 'Vintage (faded film)', value: 'vintage' },
+          { name: 'High Contrast', value: 'highcontrast' },
+          { name: 'Cross Process', value: 'crossprocess' },
+          { name: 'Matte (lifted blacks)', value: 'matte' },
+          { name: 'Vivid', value: 'vivid' },
+        ],
+        default: 'warm',
+        displayOptions: { show: { operation: ['colorCurves'] } },
+      },
+      {
+        displayName: 'Custom Curves (JSON)',
+        name: 'customCurves',
+        type: 'string',
+        typeOptions: { rows: 3 },
+        default: '{"r": "0/0 0.5/0.6 1/1", "g": "0/0 0.5/0.5 1/1", "b": "0/0 0.5/0.4 1/0.9"}',
+        description: 'Custom tone curve as JSON. Keys: r, g, b, all. Values: space-separated "input/output" pairs (0-1).',
+        displayOptions: { show: { operation: ['colorCurves'], curvesPreset: ['custom'] } },
+      },
+
+      // ─── MOTION BLUR OPTIONS ──────────────────────────────────────────
+      {
+        displayName: 'Motion Blur Frames',
+        name: 'motionBlurFrames',
+        type: 'number',
+        typeOptions: { minValue: 2, maxValue: 30 },
+        default: 5,
+        description: 'Number of frames to average for motion blur. More frames = stronger blur.',
+        displayOptions: { show: { operation: ['motionBlur'] } },
+      },
+
+      // ─── SLOW MOTION OPTIONS ──────────────────────────────────────────
+      {
+        displayName: 'Slow Motion Factor',
+        name: 'slowMotionFactor',
+        type: 'number',
+        typeOptions: { minValue: 2, maxValue: 16, numberPrecision: 0 },
+        default: 4,
+        description: 'Slow down by this factor (e.g., 4 = 4x slower). Uses frame interpolation for smooth results.',
+        displayOptions: { show: { operation: ['slowMotion'] } },
+      },
+      {
+        displayName: 'Interpolation Mode',
+        name: 'interpolateMode',
+        type: 'options',
+        options: [
+          { name: 'Blend (smooth, fast)', value: 'blend' },
+          { name: 'Minterpolate (motion-compensated, slow)', value: 'mci' },
+          { name: 'Duplicate frames (no interpolation)', value: 'dup' },
+        ],
+        default: 'blend',
+        description: 'Frame interpolation method. Blend is fast; mci gives smoother results but is very slow.',
+        displayOptions: { show: { operation: ['slowMotion'] } },
+      },
+
+      // ─── SMART CROP OPTIONS ───────────────────────────────────────────
+      {
+        displayName: 'Target Aspect Ratio',
+        name: 'smartCropRatio',
+        type: 'options',
+        options: [
+          { name: '16:9 Landscape', value: '16:9' },
+          { name: '9:16 Portrait (TikTok/Reels)', value: '9:16' },
+          { name: '1:1 Square (Instagram)', value: '1:1' },
+          { name: '4:3 Standard', value: '4:3' },
+          { name: '3:4 Portrait', value: '3:4' },
+          { name: '4:5 Instagram Portrait', value: '4:5' },
+          { name: '21:9 Cinematic', value: '21:9' },
+          { name: 'Custom', value: 'custom' },
+        ],
+        default: '9:16',
+        displayOptions: { show: { operation: ['smartCrop'] } },
+      },
+      {
+        displayName: 'Custom Width',
+        name: 'smartCropW',
+        type: 'number',
+        default: 1080,
+        displayOptions: { show: { operation: ['smartCrop'], smartCropRatio: ['custom'] } },
+      },
+      {
+        displayName: 'Custom Height',
+        name: 'smartCropH',
+        type: 'number',
+        default: 1920,
+        displayOptions: { show: { operation: ['smartCrop'], smartCropRatio: ['custom'] } },
+      },
+      {
+        displayName: 'Output Width',
+        name: 'smartCropOutputW',
+        type: 'number',
+        default: 1080,
+        description: 'Output frame width in pixels',
+        displayOptions: { show: { operation: ['smartCrop'] } },
+      },
+
       // ─── EXTRA ARGS ───────────────────────────────────────────────────
       {
         displayName: 'Extra FFmpeg Arguments',
@@ -795,6 +903,82 @@ export class FfmpegAdvanced implements INodeType {
           const segPattern = path.join(dashDir, 'seg_$RepresentationID$_$Number%05d$.m4s');
           const initPattern = path.join(dashDir, 'init_$RepresentationID$.mp4');
           ffmpegCmd = `-y -i "${inputPath}" -c:v libx264 -c:a aac -b:a 128k -seg_duration ${dashSegTime} -use_template 1 -use_timeline 1 -init_seg_name "${path.basename(initPattern)}" -media_seg_name "${path.basename(segPattern)}" -adaptation_sets "id=0,streams=v id=1,streams=a" ${extraArgs} -f dash "${manifestPath}"`;
+
+        } else if (operation === 'colorCurves') {
+          const curvesPreset = this.getNodeParameter('curvesPreset', i, 'warm') as string;
+
+          let curvesFilter: string;
+          if (curvesPreset === 'warm') {
+            curvesFilter = `curves=r='0/0 0.5/0.58 1/1':g='0/0 0.5/0.5 1/0.95':b='0/0 0.5/0.4 1/0.85'`;
+          } else if (curvesPreset === 'cool') {
+            curvesFilter = `curves=r='0/0 0.5/0.42 1/0.85':g='0/0 0.5/0.5 1/0.95':b='0/0 0.5/0.6 1/1'`;
+          } else if (curvesPreset === 'vintage') {
+            curvesFilter = `curves=r='0/0.11 0.5/0.6 1/0.9':g='0/0.05 0.5/0.5 1/0.85':b='0/0.08 0.5/0.5 1/0.7'`;
+          } else if (curvesPreset === 'highcontrast') {
+            curvesFilter = `curves=all='0/0 0.2/0.1 0.5/0.5 0.8/0.9 1/1'`;
+          } else if (curvesPreset === 'crossprocess') {
+            curvesFilter = `curves=r='0/0 0.3/0.5 0.7/0.9 1/1':g='0/0 0.5/0.4 1/0.9':b='0/0.1 0.5/0.6 1/1'`;
+          } else if (curvesPreset === 'matte') {
+            curvesFilter = `curves=all='0/0.08 0.5/0.5 1/0.92'`;
+          } else if (curvesPreset === 'vivid') {
+            curvesFilter = `curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.55 1/1':b='0/0 0.5/0.55 1/1'`;
+          } else {
+            // custom
+            const customCurvesJson = this.getNodeParameter('customCurves', i, '{}') as string;
+            let cc: Record<string, string> = {};
+            try { cc = JSON.parse(customCurvesJson); } catch {
+              throw new NodeOperationError(this.getNode(), 'Custom Curves must be valid JSON.', { itemIndex: i });
+            }
+            const parts: string[] = [];
+            if (cc.all) parts.push(`all='${cc.all}'`);
+            if (cc.r) parts.push(`r='${cc.r}'`);
+            if (cc.g) parts.push(`g='${cc.g}'`);
+            if (cc.b) parts.push(`b='${cc.b}'`);
+            curvesFilter = `curves=${parts.join(':')}`;
+          }
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "${curvesFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'motionBlur') {
+          const frames = this.getNodeParameter('motionBlurFrames', i, 5) as number;
+          // tmix: average consecutive frames for motion blur effect
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "tmix=frames=${frames}:weights='1 ${Array(frames - 1).fill('1').join(' ')}'" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'slowMotion') {
+          const factor = this.getNodeParameter('slowMotionFactor', i, 4) as number;
+          const mode = this.getNodeParameter('interpolateMode', i, 'blend') as string;
+
+          let slowFilter: string;
+          if (mode === 'dup') {
+            // Simple setpts + duplicate frames
+            slowFilter = `setpts=${factor}*PTS`;
+          } else if (mode === 'mci') {
+            // Full motion-compensated interpolation (slow but high quality)
+            slowFilter = `minterpolate=fps=${factor * 25}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1`;
+          } else {
+            // blend mode: faster interpolation
+            slowFilter = `minterpolate=fps=${factor * 25}:mi_mode=blend`;
+          }
+
+          const audioSlow = `-af "atempo=${1 / factor}"`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "${slowFilter}" ${audioSlow} ${vcodecArg} -acodec aac ${extraArgs} "${outputPath}"`;
+
+        } else if (operation === 'smartCrop') {
+          const ratioPreset = this.getNodeParameter('smartCropRatio', i, '9:16') as string;
+          const outputW = this.getNodeParameter('smartCropOutputW', i, 1080) as number;
+
+          let targetW: number, targetH: number;
+          if (ratioPreset === 'custom') {
+            targetW = this.getNodeParameter('smartCropW', i, 1080) as number;
+            targetH = this.getNodeParameter('smartCropH', i, 1920) as number;
+          } else {
+            const [rw, rh] = ratioPreset.split(':').map(Number);
+            targetH = Math.round(outputW * rh / rw);
+            targetW = outputW;
+          }
+
+          // Crop to aspect ratio from center, then scale to target resolution
+          const cropFilter = `crop=iw:iw*${targetH}/${targetW}:(iw-iw)/2:(ih-iw*${targetH}/${targetW})/2,scale=${targetW}:${targetH}`;
+          ffmpegCmd = `-y ${hwaccelArg} -i "${inputPath}" -vf "${cropFilter}" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
         } else if (operation === 'raw') {
           const rawArgs = this.getNodeParameter('rawArgs', i) as string;

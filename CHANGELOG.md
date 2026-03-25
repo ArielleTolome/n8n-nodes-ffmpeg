@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-03-24
+
+### Added — Wave 11: More Audio + Video Operations
+
+#### FfmpegAudio — 5 new operations
+- **Compressor / Limiter** — Dynamic range compression via `acompressor` filter. Configurable threshold, ratio, attack, release, makeup gain, knee width. Use ratio 20+ for limiting.
+- **Equalizer (Parametric EQ)** — Multi-band parametric equalizer using FFmpeg's `equalizer` filter. Input bands as JSON: `[{"freq": 1000, "gain": -3, "width": 200}]`
+- **Stereo to Mono** — Convert stereo/multi-channel to mono. Three modes: average both channels, left only, right only.
+- **Channel Mapping** — Re-map audio channels using `pan` filter. Presets: mono, stereo, 5.1, 7.1, swap L/R, duplicate left, duplicate right.
+- **Generate Silence / Tone** — Generate audio from scratch: silence, sine wave (with frequency), white noise, or pink noise. Configurable duration and sample rate.
+
+#### FfmpegAdvanced — 4 new operations
+- **Color Curves (Instagram Filters)** — Apply curve-based color grading via FFmpeg's `curves` filter. 7 presets: warm, cool, vintage, high contrast, cross process, matte, vivid. Also supports custom JSON curves.
+- **Motion Blur** — Add temporal motion blur using `tmix` filter (average N consecutive frames). Configurable frame count.
+- **Slow Motion (Frame Interpolation)** — Smooth slow motion via `minterpolate` filter. 3 modes: blend (fast), mci (motion-compensated, high quality), duplicate (no interpolation). Configurable factor (2x–16x).
+- **Smart Aspect Ratio Crop** — Change aspect ratio with centered crop (no letterboxing). Presets: 16:9, 9:16 (TikTok/Reels), 1:1 (Instagram), 4:3, 3:4, 4:5, 21:9 cinematic, custom.
+
+### Stats
+- 153 tests passing
+- 4 nodes, 77+ operations total
+
 ## [0.7.0] - 2026-03-24
 
 ### Added — Wave 10: Final Polish Pass

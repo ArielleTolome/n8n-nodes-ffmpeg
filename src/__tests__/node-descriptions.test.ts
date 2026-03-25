@@ -144,8 +144,15 @@ describe('FfmpegAdvanced operations', () => {
     expect(toProp).toBeDefined();
   });
 
-  test('has at least 16 operations', () => {
-    expect(opValues.length).toBeGreaterThanOrEqual(16);
+  test('includes Wave 11 video operations', () => {
+    expect(opValues).toContain('colorCurves');
+    expect(opValues).toContain('motionBlur');
+    expect(opValues).toContain('slowMotion');
+    expect(opValues).toContain('smartCrop');
+  });
+
+  test('has at least 20 operations', () => {
+    expect(opValues.length).toBeGreaterThanOrEqual(20);
   });
 });
 
@@ -164,13 +171,21 @@ describe('FfmpegAudio operations', () => {
     expect(opValues).toContain('pitch');
   });
 
+  test('includes Wave 11 audio operations', () => {
+    expect(opValues).toContain('compressor');
+    expect(opValues).toContain('equalizer');
+    expect(opValues).toContain('stereoToMono');
+    expect(opValues).toContain('channelMap');
+    expect(opValues).toContain('generateTone');
+  });
+
   test('has timeoutSeconds option', () => {
     const toProp = node.description.properties.find(p => p.name === 'timeoutSeconds');
     expect(toProp).toBeDefined();
   });
 
-  test('has at least 9 operations', () => {
-    expect(opValues.length).toBeGreaterThanOrEqual(9);
+  test('has at least 14 operations', () => {
+    expect(opValues.length).toBeGreaterThanOrEqual(14);
   });
 });
 
