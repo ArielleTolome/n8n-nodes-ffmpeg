@@ -221,6 +221,13 @@ export class FfmpegAnalyze implements INodeType {
         displayOptions: { show: { operation: ['spriteSheet'] } },
       },
       {
+        displayName: 'Sprite Rows',
+        name: 'spriteRows',
+        type: 'number',
+        default: 10,
+        displayOptions: { show: { operation: ['spriteSheet'] } },
+      },
+      {
         displayName: 'Sprite Output Path',
         name: 'spriteOutputPath',
         type: 'string',
@@ -645,12 +652,13 @@ export class FfmpegAnalyze implements INodeType {
           const tileW = this.getNodeParameter('spriteWidth', i) as number;
           const tileH = this.getNodeParameter('spriteHeight', i) as number;
           const cols = this.getNodeParameter('spriteCols', i) as number;
+          const rows = this.getNodeParameter('spriteRows', i) as number;
 
           let spritePath = this.getNodeParameter('spriteOutputPath', i, '') as string;
           if (!spritePath) spritePath = path.join(tmpDir, 'sprite.jpg');
 
           await runFfmpeg(
-            `-y -i "${inputPath}" -vf "fps=1/${interval},scale=${tileW}:${tileH},tile=${cols}x100" -frames:v 1 "${spritePath}"`
+            `-y -i "${inputPath}" -vf "fps=1/${interval},scale=${tileW}:${tileH},tile=${cols}x${rows}" -frames:v 1 "${spritePath}"`
           );
 
           const newItem: INodeExecutionData = {
