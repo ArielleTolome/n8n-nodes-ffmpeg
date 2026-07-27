@@ -450,6 +450,8 @@ export class FfmpegAudio implements INodeType {
         const returnBinary = this.getNodeParameter('returnBinary', i) as boolean;
         const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
         const extraArgs = this.getNodeParameter('extraArgs', i, '') as string;
+        const timeoutSeconds = this.getNodeParameter('timeoutSeconds', i, 300) as number;
+        const timeoutMs = Math.max(1, timeoutSeconds) * 1000;
 
         let outputPath = this.getNodeParameter('outputPath', i, '') as string;
         if (!outputPath) {
@@ -710,7 +712,7 @@ export class FfmpegAudio implements INodeType {
           throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`, { itemIndex: i });
         }
 
-        await runFfmpeg(ffmpegCmd);
+        await runFfmpeg(ffmpegCmd, timeoutMs);
 
         const newItem: INodeExecutionData = {
           json: { operation, outputPath, success: true },

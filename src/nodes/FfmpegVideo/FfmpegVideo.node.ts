@@ -945,6 +945,7 @@ export class FfmpegVideo implements INodeType {
         const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
         const extraArgs = this.getNodeParameter('extraArgs', i, '') as string;
         const timeoutSeconds = this.getNodeParameter('timeoutSeconds', i, 300) as number;
+        const timeoutMs = Math.max(1, timeoutSeconds) * 1000;
         const hwaccel = this.getNodeParameter('hwaccel', i, 'none') as string;
 
         // Build hwaccel prefix arg
@@ -1327,7 +1328,7 @@ export class FfmpegVideo implements INodeType {
           outputPath = outputPath.replace(/\.[^.]+$/, '.gif');
           const paletteFile = path.join(tmpDir, 'palette.png');
           // Two-pass palette GIF generation for best quality
-          await runFfmpeg(`-y -ss ${gifStart} -t ${gifDuration} -i "${inputPath}" -vf "fps=${gifFps},scale=${gifWidth}:-1:flags=lanczos,palettegen" "${paletteFile}"`);
+          await runFfmpeg(`-y -ss ${gifStart} -t ${gifDuration} -i "${inputPath}" -vf "fps=${gifFps},scale=${gifWidth}:-1:flags=lanczos,palettegen" "${paletteFile}"`, timeoutMs);
           ffmpegCmd = `-y -ss ${gifStart} -t ${gifDuration} -i "${inputPath}" -i "${paletteFile}" -lavfi "fps=${gifFps},scale=${gifWidth}:-1:flags=lanczos[x];[x][1:v]paletteuse" "${outputPath}"`;
 
         } else if (operation === 'thumbnail') {
@@ -1373,7 +1374,7 @@ export class FfmpegVideo implements INodeType {
           const customReturnFile = this.getNodeParameter('customReturnFile', i, false) as boolean;
           const customOutputFilePath = customReturnFile ? (this.getNodeParameter('customOutputPath', i, '') as string) : '';
 
-          await runFfmpeg(customArgsStr.trim());
+          await runFfmpeg(customArgsStr.trim(), timeoutMs);
 
           const customItem: INodeExecutionData = {
             json: { operation: 'custom', args: customArgsStr.trim(), success: true },
@@ -1402,8 +1403,7 @@ export class FfmpegVideo implements INodeType {
         }
 
         // Run FFmpeg with timeout
-        void timeoutSeconds; // used in exec option below
-        await runFfmpeg(ffmpegCmd);
+        await runFfmpeg(ffmpegCmd, timeoutMs);
 
         // Build output item
         const newItem: INodeExecutionData = {
