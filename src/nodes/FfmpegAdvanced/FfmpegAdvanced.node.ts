@@ -990,7 +990,7 @@ export class FfmpegAdvanced implements INodeType {
           const rawReturnFile = this.getNodeParameter('rawReturnFile', i, false) as boolean;
           const rawOutputPath = rawReturnFile ? (this.getNodeParameter('rawOutputPath', i, '') as string) : '';
 
-          await runFfmpeg(rawArgs.trim(), timeoutMs);
+          await runFfmpeg(rawArgs.trim());
 
           const rawItem: INodeExecutionData = {
             json: { operation: 'raw', args: rawArgs.trim(), success: true },
