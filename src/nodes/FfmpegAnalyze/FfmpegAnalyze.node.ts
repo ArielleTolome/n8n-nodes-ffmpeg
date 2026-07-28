@@ -488,8 +488,9 @@ export class FfmpegAnalyze implements INodeType {
 
           try {
             await runFfmpeg(`-y -i "${inputPath}" -vf "scdet=threshold=${threshold * 100},metadata=mode=print:file=${logFile}" -f null /dev/null`, timeoutMs);
-          } catch {
-            // FFmpeg returns non-zero when output is /dev/null, but data is in logFile
+          } catch (e: unknown) {
+            // Non-zero exit with -f null is expected; timeouts must still fail the op.
+            if (e instanceof Error && /timed out/i.test(e.message)) throw e;
           }
 
           const scenes: Array<{ timestamp: number; score: number }> = [];
@@ -514,7 +515,8 @@ export class FfmpegAnalyze implements INodeType {
               const { stderr } = await runFfmpeg(`-y -i "${inputPath}" -vf "select='gt(scene,${threshold})',showinfo" -f null /dev/null`, timeoutMs);
               const ptsTimes = [...stderr.matchAll(/pts_time:([0-9.]+)/g)];
               ptsTimes.forEach(m => scenes.push({ timestamp: parseFloat(m[1]), score: threshold }));
-            } catch {
+            } catch (e: unknown) {
+              if (e instanceof Error && /timed out/i.test(e.message)) throw e;
               // best effort
             }
           }
