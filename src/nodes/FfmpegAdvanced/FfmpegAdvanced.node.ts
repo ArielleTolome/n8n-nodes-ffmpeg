@@ -743,6 +743,8 @@ export class FfmpegAdvanced implements INodeType {
         const returnBinary = this.getNodeParameter('returnBinary', i, true) as boolean;
         const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data') as string;
         const extraArgs = this.getNodeParameter('extraArgs', i, '') as string;
+        const timeoutSeconds = this.getNodeParameter('timeoutSeconds', i, 300) as number;
+        const timeoutMs = Math.max(1, timeoutSeconds) * 1000;
         const videoCodec = this.getNodeParameter('videoCodec', i, 'libx264') as string;
         const crf = this.getNodeParameter('crf', i, 23) as number;
         const hwaccel = this.getNodeParameter('hwaccel', i, 'none') as string;
@@ -818,7 +820,7 @@ export class FfmpegAdvanced implements INodeType {
           const maxAngleArg = maxAngle >= 0 ? `:maxangle=${maxAngle * Math.PI / 180}` : '';
 
           // Pass 1: detect
-          await runFfmpeg(`-y -i "${inputPath}" -vf "vidstabdetect=shakiness=5:accuracy=15:result='${transformsFile}'" -f null /dev/null`);
+          await runFfmpeg(`-y -i "${inputPath}" -vf "vidstabdetect=shakiness=5:accuracy=15:result='${transformsFile}'" -f null /dev/null`, timeoutMs);
           // Pass 2: transform
           ffmpegCmd = `-y -i "${inputPath}" -vf "vidstabtransform=input='${transformsFile}':smoothing=${smoothing}${maxAngleArg},unsharp=5:5:0.8:3:3:0.4" ${vcodecArg} -acodec copy ${extraArgs} "${outputPath}"`;
 
@@ -1014,7 +1016,7 @@ export class FfmpegAdvanced implements INodeType {
           throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`, { itemIndex: i });
         }
 
-        await runFfmpeg(ffmpegCmd);
+        await runFfmpeg(ffmpegCmd, timeoutMs);
 
         const newItem: INodeExecutionData = {
           json: { operation, outputPath, success: true },

@@ -17,6 +17,7 @@ import {
   runFfmpeg,
   runFfprobe,
   execAsync,
+  FFMPEG_MAX_BUFFER,
 } from '../../utils/ffmpeg.utils';
 
 export class FfmpegAnalyze implements INodeType {
@@ -355,6 +356,8 @@ export class FfmpegAnalyze implements INodeType {
         const inputFile = this.getNodeParameter('inputFile', i) as string;
         const returnBinary = this.getNodeParameter('returnBinary', i, false) as boolean;
         const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data') as string;
+        const timeoutSeconds = this.getNodeParameter('timeoutSeconds', i, 300) as number;
+        const timeoutMs = Math.max(1, timeoutSeconds) * 1000;
 
         const inputPath = await resolveInput(inputFile, tmpDir);
 
@@ -434,7 +437,7 @@ export class FfmpegAnalyze implements INodeType {
           const maxArg = maxFrames > 0 ? `-vframes ${maxFrames}` : '';
           const outPattern = path.join(outDir, 'frame_%06d.jpg');
 
-          await runFfmpeg(`-y ${ssArg} -i "${inputPath}" ${toArg} ${vfArg} ${maxArg} -q:v 2 "${outPattern}"`);
+          await runFfmpeg(`-y ${ssArg} -i "${inputPath}" ${toArg} ${vfArg} ${maxArg} -q:v 2 "${outPattern}"`, timeoutMs);
 
           const files = fs.readdirSync(outDir)
             .filter(f => f.startsWith('frame_') && f.endsWith('.jpg'))
@@ -468,7 +471,7 @@ export class FfmpegAnalyze implements INodeType {
           const scaleFilter = frameWidth > 0 ? `,scale=${frameWidth}:-1` : '';
           const maxArg = maxFrames > 0 ? `-vframes ${maxFrames}` : '';
           const outPattern = path.join(outDir, 'frame_%06d.jpg');
-          await runFfmpeg(`-y -i "${inputPath}" -vf "select='not(mod(n\\,${nth}))',setpts=N/FRAME_RATE/TB${scaleFilter}" ${maxArg} -q:v 2 "${outPattern}"`);
+          await runFfmpeg(`-y -i "${inputPath}" -vf "select='not(mod(n\\,${nth}))',setpts=N/FRAME_RATE/TB${scaleFilter}" ${maxArg} -q:v 2 "${outPattern}"`, timeoutMs);
 
           const files = fs.readdirSync(outDir)
             .filter(f => f.startsWith('frame_') && f.endsWith('.jpg'))
@@ -484,9 +487,10 @@ export class FfmpegAnalyze implements INodeType {
           const logFile = path.join(tmpDir, 'scenes.txt');
 
           try {
-            await runFfmpeg(`-y -i "${inputPath}" -vf "scdet=threshold=${threshold * 100},metadata=mode=print:file=${logFile}" -f null /dev/null`);
-          } catch {
-            // FFmpeg returns non-zero when output is /dev/null, but data is in logFile
+            await runFfmpeg(`-y -i "${inputPath}" -vf "scdet=threshold=${threshold * 100},metadata=mode=print:file=${logFile}" -f null /dev/null`, timeoutMs);
+          } catch (e: unknown) {
+            // Non-zero exit with -f null is expected; timeouts must still fail the op.
+            if (e instanceof Error && /timed out/i.test(e.message)) throw e;
           }
 
           const scenes: Array<{ timestamp: number; score: number }> = [];
@@ -508,10 +512,11 @@ export class FfmpegAnalyze implements INodeType {
           // Alternative: use ffprobe with scene filter output
           if (scenes.length === 0) {
             try {
-              const { stderr } = await runFfmpeg(`-y -i "${inputPath}" -vf "select='gt(scene,${threshold})',showinfo" -f null /dev/null`);
+              const { stderr } = await runFfmpeg(`-y -i "${inputPath}" -vf "select='gt(scene,${threshold})',showinfo" -f null /dev/null`, timeoutMs);
               const ptsTimes = [...stderr.matchAll(/pts_time:([0-9.]+)/g)];
               ptsTimes.forEach(m => scenes.push({ timestamp: parseFloat(m[1]), score: threshold }));
-            } catch {
+            } catch (e: unknown) {
+              if (e instanceof Error && /timed out/i.test(e.message)) throw e;
               // best effort
             }
           }
@@ -527,7 +532,8 @@ export class FfmpegAnalyze implements INodeType {
           let stderr = '';
           try {
             const result = await execAsync(
-              `ffmpeg -i "${inputPath}" -af "silencedetect=n=${threshold}dB:d=${minDuration}" -f null /dev/null 2>&1`
+              `ffmpeg -i "${inputPath}" -af "silencedetect=n=${threshold}dB:d=${minDuration}" -f null /dev/null 2>&1`,
+              { maxBuffer: FFMPEG_MAX_BUFFER, timeout: timeoutMs },
             );
             stderr = result.stdout + result.stderr;
           } catch (e: unknown) {
@@ -558,7 +564,8 @@ export class FfmpegAnalyze implements INodeType {
           let stderr = '';
           try {
             const result = await execAsync(
-              `ffmpeg -i "${inputPath}" -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null /dev/null 2>&1`
+              `ffmpeg -i "${inputPath}" -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null /dev/null 2>&1`,
+              { maxBuffer: FFMPEG_MAX_BUFFER, timeout: timeoutMs },
             );
             stderr = result.stdout + result.stderr;
           } catch (e: unknown) {
@@ -578,7 +585,10 @@ export class FfmpegAnalyze implements INodeType {
           // Also get volumedetect stats
           let volStderr = '';
           try {
-            const vr = await execAsync(`ffmpeg -i "${inputPath}" -af volumedetect -f null /dev/null 2>&1`);
+            const vr = await execAsync(
+              `ffmpeg -i "${inputPath}" -af volumedetect -f null /dev/null 2>&1`,
+              { maxBuffer: FFMPEG_MAX_BUFFER, timeout: timeoutMs },
+            );
             volStderr = vr.stdout + vr.stderr;
           } catch (e: unknown) {
             volStderr = (e as { stderr?: string }).stderr || '';
@@ -604,7 +614,7 @@ export class FfmpegAnalyze implements INodeType {
 
           // Extract PCM samples and compute RMS amplitudes
           const pcmFile = path.join(tmpDir, 'audio.pcm');
-          await runFfmpeg(`-y -i "${inputPath}" -vn -acodec pcm_s16le -ar ${sampleRate} -ac 1 -f s16le "${pcmFile}"`);
+          await runFfmpeg(`-y -i "${inputPath}" -vn -acodec pcm_s16le -ar ${sampleRate} -ac 1 -f s16le "${pcmFile}"`, timeoutMs);
 
           const buffer = fs.readFileSync(pcmFile);
           const samples: number[] = [];
@@ -650,8 +660,7 @@ export class FfmpegAnalyze implements INodeType {
           if (!spritePath) spritePath = path.join(tmpDir, 'sprite.jpg');
 
           await runFfmpeg(
-            `-y -i "${inputPath}" -vf "fps=1/${interval},scale=${tileW}:${tileH},tile=${cols}x100" -frames:v 1 "${spritePath}"`
-          );
+            `-y -i "${inputPath}" -vf "fps=1/${interval},scale=${tileW}:${tileH},tile=${cols}x100" -frames:v 1 "${spritePath}"`, timeoutMs);
 
           const newItem: INodeExecutionData = {
             json: { operation: 'spriteSheet', interval, tileWidth: tileW, tileHeight: tileH, cols, outputPath: spritePath },
@@ -677,7 +686,7 @@ export class FfmpegAnalyze implements INodeType {
           if (!subOutputPath) subOutputPath = path.join(tmpDir, `subtitles.${subFormat}`);
 
           // Map stream by subtitle type index
-          await runFfmpeg(`-y -i "${inputPath}" -map 0:s:${trackIndex} "${subOutputPath}"`);
+          await runFfmpeg(`-y -i "${inputPath}" -map 0:s:${trackIndex} "${subOutputPath}"`, timeoutMs);
 
           const newItem: INodeExecutionData = {
             json: {
@@ -715,8 +724,7 @@ export class FfmpegAnalyze implements INodeType {
           const showwavesFilter = `showwaves=s=${wfW}x${wfH}:mode=${wfStyle}:colors=${wfColor}`;
           const bgFilter = `color=${wfBgColor}:s=${wfW}x${wfH}[bg];[bg][0:v]overlay=0:0`;
           await runFfmpeg(
-            `-y -i "${inputPath}" -filter_complex "[0:a]${showwavesFilter}[waves];color=${wfBgColor}:s=${wfW}x${wfH}[bg];[bg][waves]overlay=0:0[out]" -map "[out]" -vcodec libx264 -pix_fmt yuv420p "${wfOutputPath}"`
-          );
+            `-y -i "${inputPath}" -filter_complex "[0:a]${showwavesFilter}[waves];color=${wfBgColor}:s=${wfW}x${wfH}[bg];[bg][waves]overlay=0:0[out]" -map "[out]" -vcodec libx264 -pix_fmt yuv420p "${wfOutputPath}"`, timeoutMs);
           void bgFilter; // suppress unused variable
 
           const newItem: INodeExecutionData = {

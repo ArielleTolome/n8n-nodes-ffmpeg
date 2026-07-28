@@ -526,7 +526,11 @@ Your FFmpeg build doesn't include vidstab. Compile from source or use a build th
 
 ### Large files / timeouts
 
-For large files, increase n8n's execution timeout in your n8n config or environment:
+Each FFmpeg node has a **Timeout (seconds)** setting (default `300`) that limits how long a single FFmpeg process may run. Increase it for large encodes.
+
+**Exception:** FFmpeg Advanced → **Raw FFmpeg Command** does not expose this setting.
+
+Separately, n8n may also stop the whole workflow. For long pipelines, raise n8n's execution timeout in your config or environment:
 ```
 EXECUTIONS_TIMEOUT=3600
 ```

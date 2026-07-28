@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-27
+
+### Fixed
+- Honor the **Timeout (seconds)** node setting: pass `timeoutSeconds` through to `runFfmpeg` in Video, Audio, Analyze, and Advanced nodes (previously always defaulted to 300s).
+
 ## [1.0.0] - 2026-03-24
 
 ### 🎉 v1.0.0 — Production Release
