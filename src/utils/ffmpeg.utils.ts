@@ -8,6 +8,9 @@ import * as http from 'http';
 
 export const execAsync = promisify(execCallback);
 
+/** Max stdout/stderr buffer for ffmpeg child processes (100 MiB). */
+export const FFMPEG_MAX_BUFFER = 100 * 1024 * 1024;
+
 export interface FfmpegResult {
   outputPath: string;
   mimeType: string;
@@ -340,7 +343,7 @@ function parseFfmpegError(stderr: string): string {
  */
 export async function runFfmpeg(args: string, timeoutMs = 300000): Promise<{ stdout: string; stderr: string }> {
   try {
-    const result = await execAsync(`ffmpeg ${args}`, { maxBuffer: 100 * 1024 * 1024, timeout: timeoutMs });
+    const result = await execAsync(`ffmpeg ${args}`, { maxBuffer: FFMPEG_MAX_BUFFER, timeout: timeoutMs });
     return result;
   } catch (error: unknown) {
     const err = error as { stderr?: string; code?: number; signal?: string; message?: string; killed?: boolean };

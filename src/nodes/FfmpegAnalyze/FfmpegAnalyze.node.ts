@@ -17,6 +17,7 @@ import {
   runFfmpeg,
   runFfprobe,
   execAsync,
+  FFMPEG_MAX_BUFFER,
 } from '../../utils/ffmpeg.utils';
 
 export class FfmpegAnalyze implements INodeType {
@@ -529,7 +530,8 @@ export class FfmpegAnalyze implements INodeType {
           let stderr = '';
           try {
             const result = await execAsync(
-              `ffmpeg -i "${inputPath}" -af "silencedetect=n=${threshold}dB:d=${minDuration}" -f null /dev/null 2>&1`
+              `ffmpeg -i "${inputPath}" -af "silencedetect=n=${threshold}dB:d=${minDuration}" -f null /dev/null 2>&1`,
+              { maxBuffer: FFMPEG_MAX_BUFFER, timeout: timeoutMs },
             );
             stderr = result.stdout + result.stderr;
           } catch (e: unknown) {
@@ -560,7 +562,8 @@ export class FfmpegAnalyze implements INodeType {
           let stderr = '';
           try {
             const result = await execAsync(
-              `ffmpeg -i "${inputPath}" -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null /dev/null 2>&1`
+              `ffmpeg -i "${inputPath}" -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null /dev/null 2>&1`,
+              { maxBuffer: FFMPEG_MAX_BUFFER, timeout: timeoutMs },
             );
             stderr = result.stdout + result.stderr;
           } catch (e: unknown) {
@@ -580,7 +583,10 @@ export class FfmpegAnalyze implements INodeType {
           // Also get volumedetect stats
           let volStderr = '';
           try {
-            const vr = await execAsync(`ffmpeg -i "${inputPath}" -af volumedetect -f null /dev/null 2>&1`);
+            const vr = await execAsync(
+              `ffmpeg -i "${inputPath}" -af volumedetect -f null /dev/null 2>&1`,
+              { maxBuffer: FFMPEG_MAX_BUFFER, timeout: timeoutMs },
+            );
             volStderr = vr.stdout + vr.stderr;
           } catch (e: unknown) {
             volStderr = (e as { stderr?: string }).stderr || '';
